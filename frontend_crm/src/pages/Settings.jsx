@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Save, Globe, Bell, Shield, Palette } from 'lucide-react'
-import { Button, Input, PageHeader } from '@/components/ui'
+import { api } from '@/api/client' // Импорт твоего api
+import { Button, Input, PageHeader, Spinner } from '@/components/ui'
 
 const Section = ({ icon: Icon, title, children }) => (
   <div className="card mb-4 overflow-hidden">
@@ -14,6 +15,9 @@ const Section = ({ icon: Icon, title, children }) => (
 
 export default function Settings() {
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [isBackendLive, setIsBackendLive] = useState(false)
+
   const [form, setForm] = useState({
     centerName: 'EduCenter Pro',
     email: 'admin@educenter.uz',
@@ -27,15 +31,46 @@ export default function Settings() {
     notifyNew: false,
   })
 
+  // При загрузке проверяем связь и получаем актуальные настройки
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        // Проверяем эндпоинт здоровья (health check) твоего FastAPI
+        const response = await fetch(`${form.apiUrl}/health`).catch(() => ({ ok: false }))
+        setIsBackendLive(response.ok)
+
+        // Если бэкенд живой, подтягиваем настройки
+        if (response.ok) {
+          const settings = await api.getSettings()
+          setForm(prev => ({ ...prev, ...settings }))
+        }
+      } catch (err) {
+        setIsBackendLive(false)
+      } finally {
+        setLoading(false)
+      }
+    }
+    checkConnection()
+  }, [form.apiUrl])
+
   const handle = e => {
     const { name, value, type, checked } = e.target
     setForm(p => ({ ...p, [name]: type === 'checkbox' ? checked : value }))
   }
 
-  const save = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const save = async () => {
+    try {
+      setSaved(false)
+      // Отправляем обновленные настройки в PostgreSQL через FastAPI
+      await api.updateSettings(form)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      alert("Error saving settings: " + err.message)
+    }
   }
+
+  if (loading) return <div className="p-8"><Spinner /></div>
 
   return (
     <div className="p-8 max-w-[800px] animate-fade-in">
@@ -81,12 +116,16 @@ export default function Settings() {
           <div className="bg-bg-3 border border-border rounded-lg p-3">
             <div className="text-[11px] font-mono text-txt-dim mb-1">Connection Status</div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-danger animate-pulse" />
-              <span className="text-xs text-txt-muted">Backend not reachable — using mock data</span>
+              <div className={`w-2 h-2 rounded-full ${isBackendLive ? 'bg-success' : 'bg-danger animate-pulse'}`} />
+              <span className="text-xs text-txt-muted">
+                {isBackendLive ? 'Backend connected — live data active' : 'Backend not reachable — using mock data'}
+              </span>
             </div>
-            <div className="text-[10px] font-mono text-txt-dim mt-2">
-              Start your FastAPI server at <span className="text-accent">{form.apiUrl}</span> to connect live data
-            </div>
+            {!isBackendLive && (
+              <div className="text-[10px] font-mono text-txt-dim mt-2">
+                Start your FastAPI server at <span className="text-accent">{form.apiUrl}</span> to connect live data
+              </div>
+            )}
           </div>
         </div>
       </Section>

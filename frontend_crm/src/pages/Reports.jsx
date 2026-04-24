@@ -1,6 +1,7 @@
+import { useState, useEffect, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid, Legend } from 'recharts'
-import { MONTHLY_STATS, COURSES, store } from '@/store/data'
-import { PageHeader, fmtM, fmtUZS } from '@/components/ui'
+import { api } from '@/api/client'
+import { PageHeader, fmtM, fmtUZS, Spinner } from '@/components/ui'
 
 const PIE_COLORS = ['#7c3aed', '#38bdf8', '#10b981', '#f59e0b', '#f43f5e', '#6366f1']
 
@@ -18,12 +19,40 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
-const courseDistribution = COURSES.map(c => ({ name: c.title, value: c.students }))
-const stats = store.getStats()
-const students = store.getStudents()
-const paidData = [{ name: 'Paid', value: stats.paid }, { name: 'Unpaid', value: stats.unpaid }]
-
 export default function Reports() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Запрашиваем всю агрегированную статистику из БД
+    api.getStats().then(res => {
+      setData(res)
+      setLoading(false)
+    }).catch(err => {
+      console.error("Reports load error:", err)
+      setLoading(false)
+    })
+  }, [])
+
+  // Подготовка данных для круговых диаграмм (используем useMemo для оптимизации)
+  const chartData = useMemo(() => {
+    if (!data) return { courses: [], paid: [] }
+
+    return {
+      courses: (data.coursesDistribution || []).map(c => ({
+        name: c.title,
+        value: c.students
+      })),
+      paid: [
+        { name: 'Paid', value: data.paidCount || 0 },
+        { name: 'Unpaid', value: data.unpaidCount || 0 }
+      ]
+    }
+  }, [data])
+
+  if (loading) return <div className="p-8 flex justify-center"><Spinner /></div>
+  if (!data) return <div className="p-8 text-txt-muted font-mono text-center">No reports data available.</div>
+
   return (
     <div className="p-8 max-w-[1200px] animate-fade-in">
       <PageHeader tag="Analytics" title="Reports" />
@@ -31,10 +60,26 @@ export default function Reports() {
       {/* KPI Row */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Total Revenue', value: fmtM(stats.totalRevenue) + 'M', sub: 'UZS collected' },
-          { label: 'Avg per Student', value: fmtM(Math.round(stats.totalRevenue / (stats.paid || 1))), sub: 'UZS average' },
-          { label: 'Collection Rate', value: `${Math.round((stats.paid / stats.totalStudents) * 100)}%`, sub: 'students paid' },
-          { label: 'Course Count', value: COURSES.length, sub: `${stats.activeCourses} active` },
+          {
+            label: 'Total Revenue',
+            value: fmtM(data.totalRevenue || 0) + 'M',
+            sub: 'UZS collected'
+          },
+          {
+            label: 'Avg per Student',
+            value: fmtM(Math.round((data.totalRevenue || 0) / (data.paidCount || 1))) + 'M',
+            sub: 'UZS average'
+          },
+          {
+            label: 'Collection Rate',
+            value: `${Math.round(((data.paidCount || 0) / (data.totalStudents || 1)) * 100)}%`,
+            sub: 'students paid'
+          },
+          {
+            label: 'Course Count',
+            value: data.activeCoursesCount || 0,
+            sub: 'active modules'
+          },
         ].map(k => (
           <div key={k.label} className="card p-4">
             <div className="label">{k.label}</div>
@@ -50,7 +95,7 @@ export default function Reports() {
           <div className="text-sm font-semibold mb-1">Monthly Registrations</div>
           <div className="text-xs text-txt-muted mb-5">Students enrolled per month</div>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={MONTHLY_STATS} barSize={20}>
+            <BarChart data={data.monthly_stats || []} barSize={20}>
               <CartesianGrid strokeDasharray="2 4" stroke="#1e1e28" vertical={false} />
               <XAxis dataKey="month" tick={{ fill: '#696874', fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#696874', fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} width={24} />
@@ -64,7 +109,7 @@ export default function Reports() {
           <div className="text-sm font-semibold mb-1">Revenue Trend</div>
           <div className="text-xs text-txt-muted mb-5">Monthly income (UZS)</div>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={MONTHLY_STATS}>
+            <AreaChart data={data.monthly_stats || []}>
               <defs>
                 <linearGradient id="revG" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#10b981" stopOpacity={0.25} />
@@ -89,14 +134,14 @@ export default function Reports() {
           <div className="flex items-center gap-6">
             <ResponsiveContainer width={160} height={160}>
               <PieChart>
-                <Pie data={courseDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
-                  {courseDistribution.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} strokeWidth={0} />)}
+                <Pie data={chartData.courses} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
+                  {chartData.courses.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} strokeWidth={0} />)}
                 </Pie>
                 <Tooltip formatter={(v, n) => [v + ' students', n]} contentStyle={{ background: '#14141a', border: '1px solid #282835', borderRadius: 8, fontSize: 11, fontFamily: 'IBM Plex Mono' }} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="flex flex-col gap-2 flex-1">
-              {courseDistribution.map((d, i) => (
+            <div className="flex flex-col gap-2 flex-1 max-h-[160px] overflow-y-auto">
+              {chartData.courses.map((d, i) => (
                 <div key={d.name} className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                   <div className="text-[11px] text-txt-muted flex-1 truncate">{d.name}</div>
@@ -113,7 +158,7 @@ export default function Reports() {
           <div className="flex items-center gap-6">
             <ResponsiveContainer width={160} height={160}>
               <PieChart>
-                <Pie data={paidData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
+                <Pie data={chartData.paid} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
                   <Cell fill="#10b981" strokeWidth={0} />
                   <Cell fill="#f43f5e" strokeWidth={0} />
                 </Pie>
@@ -123,13 +168,15 @@ export default function Reports() {
             <div className="flex flex-col gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-0.5"><div className="w-2 h-2 rounded-full bg-success" /><span className="text-xs text-txt-muted">Paid</span></div>
-                <div className="text-xl font-bold text-success font-mono">{stats.paid}</div>
+                <div className="text-xl font-bold text-success font-mono">{data.paidCount || 0}</div>
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-0.5"><div className="w-2 h-2 rounded-full bg-danger" /><span className="text-xs text-txt-muted">Unpaid</span></div>
-                <div className="text-xl font-bold text-danger font-mono">{stats.unpaid}</div>
+                <div className="text-xl font-bold text-danger font-mono">{data.unpaidCount || 0}</div>
               </div>
-              <div className="text-[11px] font-mono text-txt-dim">{Math.round(stats.paid/stats.totalStudents*100)}% collection rate</div>
+              <div className="text-[11px] font-mono text-txt-dim">
+                {Math.round((data.paidCount || 0) / (data.totalStudents || 1) * 100)}% collection rate
+              </div>
             </div>
           </div>
         </div>

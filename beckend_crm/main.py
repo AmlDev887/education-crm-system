@@ -69,15 +69,25 @@ def my_search(answer: schemas.StudentSearch, db: Session = Depends(get_db)):
 
     return my_student
 
-# @app.get("/students")
-# def get_all_students(db: Session = Depends(get_db)):
-#     return db.query(models.StudentsBase).all()
+@app.get("/students")
+def get_all_students(db: Session = Depends(get_db)):
+    return db.query(models.StudentsBase).all()
 
-# @app.post("/students")
-# def add_student(student_in: schemas.StudentCreate, db: Session = Depends(get_db)):
-#     new_student = models.StudentsBase(**student_in.dict())
-#     db.add(new_student)
-#     db.commit()
-#     db.refresh(new_student)
-#     return new_student
+@app.post("/students")
+def add_student(student_in: schemas.StudentCreate, db: Session = Depends(get_db)):
+    new_student = models.StudentsBase(**student_in.dict())
+    db.add(new_student)
+    db.commit()
+    db.refresh(new_student)
+    return new_student
+
+
+
+@app.get("/courses")
+def get_course(db: Session=Depends(get_db)):
+    courses = db.query(models.CoursesBase.title).all()
+    return [c[0] for c in courses]
+
+
+
 

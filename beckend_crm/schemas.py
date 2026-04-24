@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel,Field, field_validator
+from pydantic import BaseModel,Field, field_validator,EmailStr
 
 
 class User(BaseModel):
@@ -18,17 +18,14 @@ class StudentSearch(BaseModel):
 
 class StudentCreate(BaseModel):
     fullname: str
-    email: str
+    email: EmailStr
     phone: str
-    age: int
+    age: int = Field(ge=3,le=110)
     status: str
-    is_active: bool
+    is_active: bool=True
     last_payment_date: datetime | None
     date_rage: datetime | None
 
-
-class StudentCreate(BaseModel):
-    pass
 
 
 

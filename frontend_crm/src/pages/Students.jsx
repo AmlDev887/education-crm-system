@@ -1,38 +1,27 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Search, Pencil, Trash2, UserPlus } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, UserPlus, CheckCircle2, XCircle } from 'lucide-react'
 import { api } from '@/api/client'
+import toast from 'react-hot-toast' // Импорт уведомлений
 import { Avatar, Badge, Button, Modal, Input, Select, FilterTabs, PageHeader, Empty, Spinner, getCourseColor, fmtUZS } from '@/components/ui'
 
-const COURSE_OPTIONS = [
-  { value: 1, label: 'UI/UX Design' },
-  { value: 2, label: 'Python Backend' },
-  { value: 3, label: 'Data Science' },
-  { value: 4, label: 'React Frontend' },
-  { value: 5, label: 'Cybersecurity' }
-]
-
-// Начальные поля теперь полностью соответствуют твоей БД в PostgreSQL
+// Расширили начальную форму
 const EMPTY_FORM = {
-  fullname: '',
+  name: '',
   email: '',
   phone: '',
-  course_id: '',
-  status: 'active',
+  age: 18,
+  course: '',
+  status: 'unpaid',
   is_active: true,
-  age: '',
-  last_payment_date: new Date().toISOString().slice(0, 10),
   enrolled: new Date().toISOString().slice(0, 10)
 }
 
-function StudentModal({ student, onClose, onSave }) {
-  // Инициализация формы с учетом данных из БД или пустой формы
+function StudentModal({ student, onClose, onSave, courseTitles }) {
+  // Если редактируем, подтягиваем данные студента, если нет — пустую форму
   const [form, setForm] = useState(student ? {
     ...student,
-    fullname: student.fullname || student.name || '',
-    age: student.age || '',
-    is_active: student.is_active ?? true,
-    last_payment_date: student.last_payment_date?.slice(0, 10) || new Date().toISOString().slice(0, 10),
-    enrolled: student.enrolled?.slice(0, 10) || new Date().toISOString().slice(0, 10)
+    name: student.fullname || student.name,
+    enrolled: student.date_rage ? student.date_rage.split('T')[0] : new Date().toISOString().slice(0, 10)
   } : EMPTY_FORM)
 
   const [errors, setErrors] = useState({})
@@ -40,42 +29,53 @@ function StudentModal({ student, onClose, onSave }) {
   const isEdit = !!student
 
   const handle = e => {
-    const { name, value } = e.target;
-    // Конвертация строкового значения из Select в Boolean для поля is_active
-    const finalValue = name === 'is_active' ? value === 'true' : value;
-
-    setForm(p => ({ ...p, [name]: finalValue }));
+    const { name, value, type, checked } = e.target;
+    setForm(p => ({
+      ...p,
+      [name]: type === 'checkbox' ? checked : value
+    }));
     setErrors(p => ({ ...p, [name]: '' }))
   }
 
   const validate = () => {
     const e = {}
-    if (!form.fullname?.trim()) e.fullname = 'Full Name is required'
-    if (!form.email?.includes('@')) e.email = 'Valid email required'
-    if (!form.course_id) e.course_id = 'Select a course'
-    if (!form.age || form.age <= 0) e.age = 'Valid age is required'
+    if (!form.name.trim())         e.name    = 'Name is required'
+    if (!form.email.includes('@')) e.email   = 'Valid email required'
+    if (!form.course)              e.course  = 'Select a course'
+    if (form.age < 3 || form.age > 110) e.age = 'Age must be 3-110'
     return e
   }
 
   const submit = async () => {
-    const e = validate()
-    if (Object.keys(e).length) { setErrors(e); return }
-    setSaving(true)
-    try {
-      // Подготовка данных перед отправкой (числа должны быть числами)
-      const payload = {
-        ...form,
-        age: parseInt(form.age),
-        course_id: parseInt(form.course_id)
-      }
+    const e = validate();
+    if (Object.keys(e).length) { setErrors(e); return; }
+    setSaving(true);
 
-      if (isEdit) await api.updateStudent(student.id, payload)
-      else await api.addStudent(payload)
-      onSave()
+    const backendData = {
+      fullname: form.name,
+      email: form.email,
+      phone: form.phone || '',
+      age: parseInt(form.age),
+      course: form.course,
+      status: form.status,
+      is_active: form.is_active,
+      last_payment_date: new Date().toISOString(),
+      date_rage: new Date(form.enrolled).toISOString()
+    };
+
+    try {
+      if (isEdit) {
+        await api.updateStudent(student.id, backendData);
+        toast.success('Student updated successfully'); // Уведомление об обновлении
+      } else {
+        await api.addStudent(backendData);
+        toast.success('New student added!'); // Уведомление о добавлении
+      }
+      onSave();
     } catch (err) {
-      console.error("Save error:", err)
+      toast.error(err.message || "Operation failed"); // Уведомление об ошибке
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
@@ -84,69 +84,28 @@ function StudentModal({ student, onClose, onSave }) {
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <Input
-              label="Full Name"
-              name="fullname"
-              value={form.fullname}
-              onChange={handle}
-              placeholder="e.g. Bekzod Karimov"
-              required
-              error={errors.fullname}
-            />
+            <Input label="Full Name" name="name" value={form.name} onChange={handle} placeholder="e.g. Aisha Karimova" required error={errors.name} />
           </div>
-
           <Input label="Email" name="email" type="email" value={form.email} onChange={handle} placeholder="student@example.com" required error={errors.email} />
+
+          {/* НОВОЕ ПОЛЕ: ВОЗРАСТ */}
+          <Input label="Age" name="age" type="number" value={form.age} onChange={handle} min="3" max="110" error={errors.age} />
+
           <Input label="Phone" name="phone" value={form.phone} onChange={handle} placeholder="+998 90 123 4567" />
-
-          <Input
-            label="Age"
-            name="age"
-            type="number"
-            value={form.age}
-            onChange={handle}
-            placeholder="21"
-            required
-            error={errors.age}
-          />
-
-          <Select
-            label="Course"
-            name="course_id"
-            value={form.course_id}
-            onChange={handle}
-            options={COURSE_OPTIONS}
-            placeholder="Select course..."
-            required
-            error={errors.course_id}
-          />
-
-          <Select
-            label="Status"
-            name="status"
-            value={form.status}
-            onChange={handle}
-            options={[
-              { value: 'active', label: 'Active (Paid)' },
-              { value: 'inactive', label: 'Inactive (Unpaid)' }
-            ]}
-          />
-
-          <Select
-            label="Account Access"
-            name="is_active"
-            value={form.is_active.toString()}
-            onChange={handle}
-            options={[
-              { value: 'true', label: 'Enabled (Active)' },
-              { value: 'false', label: 'Disabled (Blocked)' }
-            ]}
-          />
-
           <Input label="Enrollment Date" name="enrolled" type="date" value={form.enrolled} onChange={handle} />
-          <Input label="Last Payment" name="last_payment_date" type="date" value={form.last_payment_date} onChange={handle} />
+
+          <Select label="Course" name="course" value={form.course} onChange={handle} options={courseTitles} placeholder="Select course..." required error={errors.course} />
+          <Select label="Payment Status" name="status" value={form.status} onChange={handle}
+            options={[{ value: 'paid', label: 'Paid' }, { value: 'unpaid', label: 'Unpaid' }]} />
+
+          {/* НОВОЕ ПОЛЕ: СТАТУС АКТИВНОСТИ */}
+          <div className="col-span-2 flex items-center gap-2 pt-2">
+            <input type="checkbox" name="is_active" id="is_active" checked={form.is_active} onChange={handle} className="w-4 h-4 accent-primary" />
+            <label htmlFor="is_active" className="text-sm font-medium cursor-pointer">Student is currently active</label>
+          </div>
         </div>
 
-        <div className="flex gap-2 justify-end pt-2 border-t border-border">
+        <div className="flex gap-2 justify-end pt-4 border-t border-border">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={submit} disabled={saving}>
             <UserPlus size={14} />
@@ -162,7 +121,7 @@ function DeleteConfirm({ student, onClose, onConfirm }) {
   return (
     <Modal title="Delete Student" onClose={onClose} width="max-w-sm">
       <p className="text-sm text-txt-muted mb-5">
-        Remove <span className="text-txt font-medium">{student.fullname || student.name}</span> from the system?
+        Remove <span className="text-txt font-medium">{student.fullname || student.name}</span>?
       </p>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -174,6 +133,7 @@ function DeleteConfirm({ student, onClose, onConfirm }) {
 
 export default function Students() {
   const [students, setStudents] = useState([])
+  const [courseTitles, setCourseTitles] = useState([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
   const [filter, setFilter]     = useState('all')
@@ -182,37 +142,40 @@ export default function Students() {
   const [selected, setSelected] = useState(null)
 
   const load = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const data = search.trim().length > 0
-        ? await api.searchStudents(search)
-        : await api.getStudents();
-      setStudents(Array.isArray(data) ? data : []);
+      const [sData, cData] = await Promise.all([api.getStudents(), api.getCourse()])
+      setStudents(sData)
+      setCourseTitles(cData.map(c => ({ value: c, label: c })))
     } catch (err) {
-      setStudents([]);
+      console.error(err)
+      toast.error("Failed to load students data");
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  useEffect(() => {
-    const handler = setTimeout(load, 300);
-    return () => clearTimeout(handler);
-  }, [search]);
+  useEffect(() => { load() }, [])
 
-  const filtered = useMemo(() => {
-    return students.filter(s => {
-      const normalizedStatus = s.status === 'active' ? 'paid' : (s.status === 'inactive' ? 'unpaid' : s.status);
-      const matchF = filter === 'all' || normalizedStatus === filter;
-      const matchC = courseFilter === 'all' || s.course === courseFilter;
-      return matchF && matchC;
-    })
-  }, [students, filter, courseFilter])
+  const filtered = useMemo(() => students.filter(s => {
+    const q = search.toLowerCase()
+    const name = (s.fullname || s.name || '').toLowerCase()
+    const matchQ = !q || name.includes(q) || (s.email || '').toLowerCase().includes(q)
+    const matchF = filter === 'all' || s.status === filter
+    const matchC = courseFilter === 'all' || s.course === courseFilter
+    return matchQ && matchF && matchC
+  }), [students, search, filter, courseFilter])
 
   const handleSave = () => { setModal(null); load() }
-  const handleDelete = () => { api.deleteStudent(selected.id).then(handleSave) }
-
-  const uniqueCourses = useMemo(() => [...new Set(students.map(s => s.course))], [students])
+  const handleDelete = async () => {
+    try {
+      await api.deleteStudent(selected.id)
+      toast.success('Student deleted');
+      setModal(null); load()
+    } catch (err) {
+      toast.error("Error deleting student")
+    }
+  }
 
   return (
     <div className="p-8 max-w-[1200px] animate-fade-in">
@@ -225,88 +188,62 @@ export default function Students() {
       <div className="flex gap-3 mb-5 flex-wrap items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, email, phone..."
-            className="input-field pl-8"
-          />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="input-field pl-8" />
         </div>
-        <FilterTabs value={filter} onChange={setFilter}
-          options={[{ value: 'all', label: 'All' }, { value: 'paid', label: 'Paid' }, { value: 'unpaid', label: 'Unpaid' }]} />
-        <select value={courseFilter} onChange={e => setCourse(e.target.value)}
-          className="input-field w-auto text-xs py-1.5">
+        <FilterTabs value={filter} onChange={setFilter} options={[{ value: 'all', label: 'All' }, { value: 'paid', label: 'Paid' }, { value: 'unpaid', label: 'Unpaid' }]} />
+        <select value={courseFilter} onChange={e => setCourse(e.target.value)} className="input-field w-auto text-xs py-1.5">
           <option value="all">All Courses</option>
-          {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}
+          {courseTitles.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
       </div>
 
-      <div className="card overflow-hidden min-h-[200px] relative">
-        {loading && <div className="absolute inset-0 flex items-center justify-center bg-bg-0/50 z-10"><Spinner /></div>}
-
-        <table className="w-full">
-          <thead className="bg-bg-1">
-            <tr>
-              <th className="th">Student</th>
-              <th className="th">Course</th>
-              <th className="th">Age</th>
-              <th className="th">Phone</th>
-              <th className="th">Status</th>
-              <th className="th w-20"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && !loading
-              ? <tr><td colSpan={7}><Empty message="No students match your search" icon={Search} /></td></tr>
-              : filtered.map(s => (
-                <tr key={s.id} className="hover:bg-bg-3 transition-colors group">
+      <div className="card overflow-hidden">
+        {loading ? <div className="p-10 flex justify-center"><Spinner /></div> : (
+          <table className="w-full text-left">
+            <thead className="bg-bg-1">
+              <tr>
+                <th className="th">Student</th>
+                <th className="th text-center">Age</th>
+                <th className="th">Course</th>
+                <th className="th">Phone</th>
+                <th className="th">Status</th>
+                <th className="th text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? <tr><td colSpan={6}><Empty /></td></tr> : filtered.map(s => (
+                <tr key={s.id} className="hover:bg-bg-3 transition-colors group border-b border-border/50">
                   <td className="td">
                     <div className="flex items-center gap-3">
-                      <Avatar name={s.fullname || s.name} color={getCourseColor(s.course)} />
+                      <Avatar name={s.fullname} color={getCourseColor(s.course)} />
                       <div>
-                        <div className="text-sm font-medium">{s.fullname || s.name}</div>
-                        <div className="text-[11px] text-txt-muted font-mono">{s.email}</div>
+                        <div className="text-sm font-medium flex items-center gap-2">
+                          {s.fullname}
+                          {s.is_active ? <CheckCircle2 size={12} className="text-success" /> : <XCircle size={12} className="text-txt-muted" />}
+                        </div>
+                        <div className="text-[11px] text-txt-muted">{s.email}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="td">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: getCourseColor(s.course) }} />
-                      <span className="text-xs text-txt-muted">{s.course}</span>
-                    </div>
-                  </td>
-                  <td className="td text-xs text-txt-muted">{s.age} y.o.</td>
+                  <td className="td text-center text-xs">{s.age}</td>
+                  <td className="td text-xs text-txt-muted">{s.course}</td>
                   <td className="td text-xs font-mono text-txt-muted">{s.phone}</td>
-                  <td className="td">
-                    <Badge type={s.status === 'active' ? 'paid' : 'unpaid'}>
-                      {s.status}
-                    </Badge>
-                  </td>
-                  <td className="td">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setSelected(s); setModal('edit') }}
-                        className="p-1.5 rounded-lg hover:bg-bg-4 text-txt-muted hover:text-txt transition-colors">
-                        <Pencil size={13} />
-                      </button>
-                      <button onClick={() => { setSelected(s); setModal('delete') }}
-                        className="p-1.5 rounded-lg hover:bg-danger-dim text-txt-muted hover:text-danger transition-colors">
-                        <Trash2 size={13} />
-                      </button>
+                  <td className="td"><Badge type={s.status}>{s.status}</Badge></td>
+                  <td className="td text-right">
+                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => { setSelected(s); setModal('edit') }} className="p-1.5 hover:bg-bg-4 rounded-md"><Pencil size={13} /></button>
+                      <button onClick={() => { setSelected(s); setModal('delete') }} className="p-1.5 hover:bg-danger-dim text-danger rounded-md"><Trash2 size={13} /></button>
                     </div>
                   </td>
                 </tr>
-              ))
-            }
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      <div className="mt-3 text-[11px] text-txt-dim font-mono">
-        Showing {filtered.length} of {students.length} students
-      </div>
-
-      {modal === 'add'    && <StudentModal onClose={() => setModal(null)} onSave={handleSave} />}
-      {modal === 'edit'   && <StudentModal student={selected} onClose={() => setModal(null)} onSave={handleSave} />}
+      {modal === 'add'    && <StudentModal courseTitles={courseTitles} onClose={() => setModal(null)} onSave={handleSave} />}
+      {modal === 'edit'   && <StudentModal student={selected} courseTitles={courseTitles} onClose={() => setModal(null)} onSave={handleSave} />}
       {modal === 'delete' && <DeleteConfirm student={selected} onClose={() => setModal(null)} onConfirm={handleDelete} />}
     </div>
   )

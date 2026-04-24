@@ -1,6 +1,5 @@
-import { useState } from 'react' // Добавляем useState
 import { Routes, Route, Navigate } from 'react-router-dom'
-import Auth from './Auth' // Импортируй свой новый файл Auth.jsx
+import { Toaster } from 'react-hot-toast' // Импортируем тостер
 import Sidebar from '@/components/Sidebar'
 import Dashboard  from '@/pages/Dashboard'
 import Students   from '@/pages/Students'
@@ -11,17 +10,17 @@ import Reports    from '@/pages/Reports'
 import Settings   from '@/pages/Settings'
 
 export default function App() {
-  // 1. Создаем состояние: залогинен пользователь или нет
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-
-  // 2. Если НЕ залогинен — показываем ТОЛЬКО окно входа
-  if (!isAuthenticated) {
-    return <Auth onLoginSuccess={() => setIsAuthenticated(true)} />
-  }
-
-  // 3. Если залогинен — показываем весь остальной интерфейс
   return (
     <div className="flex h-screen overflow-hidden bg-bg-0">
+      {/* Настройка уведомлений: темная тема, снизу справа */}
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: { background: '#18181b', color: '#fff', border: '1px solid #27272a', fontSize: '14px' },
+          success: { iconTheme: { primary: '#8b5cf6', secondary: '#fff' } }
+        }}
+      />
+
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <Routes>

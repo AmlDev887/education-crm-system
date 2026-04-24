@@ -49,25 +49,3 @@
   .page-title { @apply text-2xl font-bold mb-1; }
   .page-tag   { @apply text-[11px] font-mono text-accent tracking-widest uppercase mb-1.5; }
 }
-/* Кастомные анимации для окна входа и стикера */
-@layer utilities {
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-8px); }
-    50% { transform: translateX(8px); }
-    75% { transform: translateX(-8px); }
-  }
-
-  .animate-shake {
-    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
-  }
-
-  @keyframes bounce-slow {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); }
-  }
-
-  .animate-bounce-slow {
-    animation: bounce-slow 3s ease-in-out infinite;
-  }
-}
