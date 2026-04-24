@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  html, body, #root { height: 100%; }
+  body {
+    background: #0a0a0d;
+    color: #eae8e3;
+    font-family: 'Syne', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 4px; height: 4px; background: #0f0f14; }
+  ::-webkit-scrollbar-thumb { background: #1e1e28; border-radius: 4px; }
+  input, select, textarea, button { font-family: 'Syne', sans-serif; }
+}
+
+@layer components {
+  .card {
+    @apply bg-bg-2 border border-border rounded-lg;
+  }
+  .card-hover {
+    @apply transition-all duration-150 hover:border-border-2 hover:-translate-y-0.5;
+  }
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-hover text-white font-medium text-sm px-4 py-2 rounded-lg transition-all duration-150 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply bg-transparent hover:bg-bg-3 text-txt-muted border border-border font-medium text-sm px-4 py-2 rounded-lg transition-all duration-150 flex items-center gap-2;
+  }
+  .btn-danger {
+    @apply bg-danger-dim hover:bg-danger/20 text-danger border border-danger-border font-medium text-sm px-3 py-1.5 rounded-lg transition-all duration-150 flex items-center gap-1.5;
+  }
+  .input-field {
+    @apply w-full bg-bg-3 border border-border text-txt text-sm rounded-lg px-3 py-2.5 outline-none transition-colors duration-150 focus:border-accent-border placeholder-txt-muted;
+  }
+  .label {
+    @apply text-[11px] text-txt-muted font-mono uppercase tracking-widest mb-1.5 block;
+  }
+  .badge-paid    { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-success-dim text-success border border-success-border; }
+  .badge-unpaid  { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-danger-dim text-danger border border-danger-border; }
+  .badge-active  { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-accent-dim text-violet-300 border border-accent-border; }
+  .badge-upcoming{ @apply text-[11px] font-mono px-2 py-0.5 rounded bg-warn-dim text-warn border border-warn-border; }
+  .badge-present { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-success-dim text-success border border-success-border; }
+  .badge-absent  { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-danger-dim text-danger border border-danger-border; }
+  .th { @apply text-[11px] text-txt-muted font-mono uppercase tracking-widest px-4 py-3 text-left font-normal border-b border-border; }
+  .td { @apply px-4 py-3 text-sm border-b border-border/60; }
+  .page-title { @apply text-2xl font-bold mb-1; }
+  .page-tag   { @apply text-[11px] font-mono text-accent tracking-widest uppercase mb-1.5; }
+}
+/* Кастомные анимации для окна входа и стикера */
+@layer utilities {
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    50% { transform: translateX(8px); }
+    75% { transform: translateX(-8px); }
+  }
+
+  .animate-shake {
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+  }
+
+  @keyframes bounce-slow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+  }
+
+  .animate-bounce-slow {
+    animation: bounce-slow 3s ease-in-out infinite;
+  }
+}

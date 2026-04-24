@@ -1,0 +1,5 @@
+# Игнорируем папку фронтенда для статистики
+EduCRM/** linguist-documentation
+
+# Принудительно считаем Python главным
+*.py linguist-detectable
