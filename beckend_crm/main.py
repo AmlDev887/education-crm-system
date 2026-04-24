@@ -64,11 +64,9 @@ def get_all_students(db: Session = Depends(get_db)):
     result = []
 
     for s in students:
-        # 1. Превращаем модель в схему
         student_dict = schemas.StudentResponse.model_validate(s)
-        # 2. Вставляем имя курса вручную
         student_dict.course = s.courses[0].title if s.courses else "Нет курса"
-        # 3. ДОБАВЛЯЕМ В СПИСОК (этого не было!)
+
         result.append(student_dict)
 
     return result
@@ -92,14 +90,12 @@ def add_student(student_in: schemas.StudentCreate, db: Session = Depends(get_db)
     if not db_course:
         raise HTTPException(status_code=404, detail=f"Курс '{student_in.course}' не найден")
 
-    # 3. Добавляем связь студента с курсом
     new_student.courses.append(db_course)
 
     db.add(new_student)
     db.commit()
     db.refresh(new_student)
 
-    # 4. Подготавливаем ответ, подставляя название курса
     response = schemas.StudentResponse.from_orm(new_student)
     response.course = db_course.title
     return response

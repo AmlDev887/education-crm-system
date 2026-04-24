@@ -147,7 +147,6 @@ export default function Students() {
       const [sData, cData] = await Promise.all([api.getStudents(), api.getCourses()]) // Используй getCourses
       setStudents(sData)
 
-      // ИСПРАВЛЕНИЕ ТУТ: берем title из объекта курса
       if (Array.isArray(cData)) {
         setCourseTitles(cData.map(c => ({
           value: typeof c === 'object' ? c.title : c,
