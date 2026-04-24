@@ -144,17 +144,23 @@ export default function Students() {
   const load = async () => {
     setLoading(true)
     try {
-      const [sData, cData] = await Promise.all([api.getStudents(), api.getCourse()])
+      const [sData, cData] = await Promise.all([api.getStudents(), api.getCourses()]) // Используй getCourses
       setStudents(sData)
-      setCourseTitles(cData.map(c => ({ value: c, label: c })))
+
+      // ИСПРАВЛЕНИЕ ТУТ: берем title из объекта курса
+      if (Array.isArray(cData)) {
+        setCourseTitles(cData.map(c => ({
+          value: typeof c === 'object' ? c.title : c,
+          label: typeof c === 'object' ? c.title : c
+        })))
+      }
     } catch (err) {
       console.error(err)
-      toast.error("Failed to load students data");
+      toast.error("Failed to load data");
     } finally {
       setLoading(false)
     }
   }
-
   useEffect(() => { load() }, [])
 
   const filtered = useMemo(() => students.filter(s => {

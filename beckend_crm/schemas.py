@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel,Field, field_validator,EmailStr
-
+from typing import Optional
 
 class User(BaseModel):
     username: str= Field(...,min_length=2,max_length=100)
@@ -16,16 +16,35 @@ class StudentSearch(BaseModel):
             return  v.strip()
         return v
 
+# schemas.py
+
 class StudentCreate(BaseModel):
     fullname: str
-    email: EmailStr
+    email: str
     phone: str
-    age: int = Field(ge=3,le=110)
+    age: int
+    course: str
     status: str
-    is_active: bool=True
-    last_payment_date: datetime | None
-    date_rage: datetime | None
+    is_active: bool
+    date_rage: datetime
 
+    class Config:
+        from_attributes = True
+
+class StudentResponse(BaseModel):
+    id: int
+    fullname: str
+    email: str
+    phone: str
+    age: int
+    status: str
+    is_active: bool
+    date_rage: datetime
+    last_payment_date: datetime
+    course: Optional[str] = None  # <--- Сделай его необязательным по умолчанию
+
+    class Config:
+        from_attributes = True
 
 
 

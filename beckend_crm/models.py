@@ -54,3 +54,6 @@ class PaymentsBase(Base):
     student = relationship("StudentsBase",back_populates="payments")
     course = relationship("CoursesBase",back_populates="payments")
 
+
+
+
