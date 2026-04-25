@@ -122,10 +122,9 @@ def get_courses(db: Session = Depends(get_db)):
 
 @app.get("/courses/title")
 def get_course_titles(db: Session = Depends(get_db)):
-    # Специальный роут только для названий (если нужно для простых списков)
     courses = db.query(models.CoursesBase.title).all()
     return [c[0] for c in courses]
-# Добавь это в main.py
+
 
 @app.get("/stats")
 def get_stats():
