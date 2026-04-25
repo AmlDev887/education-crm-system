@@ -10,6 +10,7 @@ export default function Attendance() {
   const [filter, setFilter]         = useState('all')
   const [search, setSearch]         = useState('')
   const [selectedDate, setDate]     = useState('')
+  const [dateType, setDateType]     = useState('all') // 'all', 'today', 'week', 'month', 'custom'
 
   const load = () => Promise.all([api.getAttendance(), api.getStudents()]).then(([a, s]) => {
     setAttendance(a); setStudents(s); setLoading(false)
@@ -17,15 +18,29 @@ export default function Attendance() {
 
   useEffect(() => { load() }, [])
 
-  const dates = [...new Set(attendance.map(a => a.date))].sort().reverse()
-
   const filtered = useMemo(() => attendance.filter(a => {
     const q = search.toLowerCase()
     const matchQ = !q || a.studentName.toLowerCase().includes(q) || a.course.toLowerCase().includes(q)
     const matchF = filter === 'all' || a.status === filter
-    const matchD = !selectedDate || a.date === selectedDate
+
+    // Логика фильтрации по датам
+    const recordDate = new Date(a.date)
+    const now = new Date()
+    let matchD = true
+
+    if (dateType === 'today') {
+      matchD = a.date === now.toISOString().split('T')[0]
+    } else if (dateType === 'week') {
+      const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7)
+      matchD = recordDate >= weekAgo
+    } else if (dateType === 'month') {
+      matchD = recordDate.getMonth() === now.getMonth() && recordDate.getFullYear() === now.getFullYear()
+    } else if (dateType === 'custom') {
+      matchD = !selectedDate || a.date === selectedDate
+    }
+
     return matchQ && matchF && matchD
-  }), [attendance, filter, search, selectedDate])
+  }), [attendance, filter, search, selectedDate, dateType])
 
   const presentCount = filtered.filter(a => a.status === 'present').length
   const absentCount  = filtered.filter(a => a.status === 'absent').length
@@ -39,14 +54,14 @@ export default function Attendance() {
 
   return (
     <div className="p-8 max-w-[1200px] animate-fade-in">
-      <PageHeader tag="Tracking" title="Attendance" />
+      <PageHeader tag="Отслеживание" title="Посещаемость" />
 
-      {/* Summary */}
+      {/* Сводка */}
       <div className="flex gap-4 mb-6">
         {[
-          { label: 'Attendance Rate', value: `${rate}%`, color: rate > 80 ? '#10b981' : rate > 60 ? '#f59e0b' : '#f43f5e' },
-          { label: 'Present', value: presentCount, color: '#10b981' },
-          { label: 'Absent',  value: absentCount,  color: '#f43f5e' },
+          { label: 'Процент посещаемости', value: `${rate}%`, color: rate > 80 ? '#10b981' : rate > 60 ? '#f59e0b' : '#f43f5e' },
+          { label: 'Присутствуют', value: presentCount, color: '#10b981' },
+          { label: 'Отсутствуют',  value: absentCount,  color: '#f43f5e' },
         ].map(s => (
           <div key={s.label} className="card flex-1 p-4">
             <div className="label">{s.label}</div>
@@ -55,19 +70,43 @@ export default function Attendance() {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Фильтры */}
       <div className="flex gap-3 mb-5 flex-wrap items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search student or course..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск студента или курса..."
             className="input-field pl-8" />
         </div>
-        <select value={selectedDate} onChange={e => setDate(e.target.value)} className="input-field w-auto text-xs py-1.5">
-          <option value="">All Dates</option>
-          {dates.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
+
+        <div className="flex gap-2 items-center">
+          <select
+            value={dateType}
+            onChange={(e) => setDateType(e.target.value)}
+            className="input-field w-auto text-xs py-1.5"
+          >
+            <option value="all">Все даты</option>
+            <option value="today">Сегодня</option>
+            <option value="week">За неделю</option>
+            <option value="month">За месяц</option>
+            <option value="custom">Выбрать дату...</option>
+          </select>
+
+          {dateType === 'custom' && (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setDate(e.target.value)}
+              className="input-field w-auto text-xs py-1 px-2 animate-fade-in"
+            />
+          )}
+        </div>
+
         <FilterTabs value={filter} onChange={setFilter}
-          options={[{ value: 'all', label: 'All' }, { value: 'present', label: 'Present' }, { value: 'absent', label: 'Absent' }]} />
+          options={[
+            { value: 'all', label: 'Все' },
+            { value: 'present', label: 'Был' },
+            { value: 'absent', label: 'Нет' }
+          ]} />
       </div>
 
       <div className="card overflow-hidden">
@@ -75,16 +114,16 @@ export default function Attendance() {
           <table className="w-full">
             <thead className="bg-bg-1">
               <tr>
-                <th className="th">Student</th>
-                <th className="th">Course</th>
-                <th className="th">Date</th>
-                <th className="th">Status</th>
-                <th className="th">Toggle</th>
+                <th className="th">Студент</th>
+                <th className="th">Курс</th>
+                <th className="th">Дата</th>
+                <th className="th">Статус</th>
+                <th className="th">Действие</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0
-                ? <tr><td colSpan={5}><Empty message="No attendance records found" icon={CalendarCheck} /></td></tr>
+                ? <tr><td colSpan={5}><Empty message="Записей о посещаемости не найдено" icon={CalendarCheck} /></td></tr>
                 : filtered.map(a => (
                   <tr key={a.id} className="hover:bg-bg-3 transition-colors">
                     <td className="td">
@@ -95,11 +134,11 @@ export default function Attendance() {
                     </td>
                     <td className="td text-xs text-txt-muted">{a.course}</td>
                     <td className="td text-xs font-mono text-txt-muted">{a.date}</td>
-                    <td className="td"><Badge type={a.status}>{a.status}</Badge></td>
+                    <td className="td"><Badge type={a.status}>{a.status === 'present' ? 'Был' : 'Нет'}</Badge></td>
                     <td className="td">
                       <button onClick={() => markToggle(a)}
                         className="text-[11px] font-mono text-txt-muted hover:text-txt bg-bg-3 hover:bg-bg-4 border border-border px-2.5 py-1 rounded-lg transition-colors">
-                        Mark {a.status === 'present' ? 'absent' : 'present'}
+                        Отметить как {a.status === 'present' ? 'отсутствующего' : 'присутствующего'}
                       </button>
                     </td>
                   </tr>
@@ -109,7 +148,7 @@ export default function Attendance() {
           </table>
         )}
       </div>
-      <div className="mt-3 text-[11px] text-txt-dim font-mono">Showing {filtered.length} records</div>
+      <div className="mt-3 text-[11px] text-txt-dim font-mono">Показано записей: {filtered.length}</div>
     </div>
   )
 }

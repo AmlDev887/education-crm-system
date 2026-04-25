@@ -1,7 +1,9 @@
-from sqlalchemy import String, DateTime, Integer, ForeignKey, Boolean,Table,Column
+from tkinter.constants import CURRENT
+
+from sqlalchemy import String, DateTime, Integer, ForeignKey, Boolean,Table,Column,Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship # Добавили relationship
 from database import Base
-from datetime import datetime
+from datetime import datetime,date
 
 class UserBase(Base):
     __tablename__ = "users"
@@ -42,6 +44,16 @@ class CoursesBase(Base):
     students = relationship("StudentsBase",secondary=student_course,back_populates="courses")
     payments = relationship("PaymentsBase",back_populates="course")
 
+class AttendanceBase(Base):
+    __tablename__ = "attendance"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("students.id"))
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"))
+    date: Mapped[date] = mapped_column(Date,default=date.today,nullable=False)
+    status: Mapped[str] = mapped_column(String(20),default="present",nullable=False)
+
+    student = relationship("StudentsBase")
+    course = relationship("CoursesBase")
 
 class PaymentsBase(Base):
     __tablename__ = "payments" # Маленькими буквами для порядка
