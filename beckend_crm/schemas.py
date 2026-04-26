@@ -41,10 +41,29 @@ class StudentResponse(BaseModel):
     is_active: bool
     date_rage: datetime
     last_payment_date: datetime
-    course: Optional[str] = None  # <--- Сделай его необязательным по умолчанию
+    course: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+class AttendanceResponse(BaseModel):
+    id: int
+    student_id: int
+    course_id: int
+    date: Date
+    status: str
+
+    class Config:
+        from_attributes = True
+
+class AttendanceCreate(BaseModel):
+    student_id: int
+    course_id: int
+    status: str
+
+    class Config:
+        from_attributes = True
+
 
 
 

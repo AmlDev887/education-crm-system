@@ -1,4 +1,5 @@
 import uvicorn
+from click.formatting import join_options
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session,joinedload
@@ -59,7 +60,7 @@ def login(user_in: schemas.User,db: Session = Depends(get_db)):
 # ─── STUDENTS ──────────────────────────────────────────────────────
 @app.get("/students", response_model=List[schemas.StudentResponse])
 def get_all_students(db: Session = Depends(get_db)):
-    # Загружаем всё одним махом
+
     students = db.query(models.StudentsBase).options(joinedload(models.StudentsBase.courses)).all()
     result = []
 
@@ -139,10 +140,32 @@ def get_stats():
 @app.get("/payments")
 def get_payments():
     return []
+#─── ATTENDANCE ───────────────────────────────────────────────────────
+@app.get("/attendance", response_model=List[schemas.AttendanceResponse])
+def get_attendance(db: Session = Depends(get_db)):
 
-@app.get("/attendance")
-def get_attendance():
-    return []
+    my_attendance = (
+        db.query(models.AttendanceBase)
+        .options(
+            joinedload(models.AttendanceBase.course),
+            joinedload(models.AttendanceBase.student)
+        )
+        .all()
+    )
+    result=[]
+    for att in my_attendance:
+        result.append(
+            {
+                "id": att.id,
+                "student_id": att.student_id,
+                "course_id": att.course_id,
+                "status": att.status
+            }
+        )
+
+@app.post("/attendance",response_model = schemas.AttendanceResponse)
+def post_attendence():
+    
 
 if __name__ == "__main__":
 

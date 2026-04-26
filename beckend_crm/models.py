@@ -48,7 +48,8 @@ class AttendanceBase(Base):
     __tablename__ = "attendance"
     id: Mapped[int] = mapped_column(primary_key=True)
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id"))
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"))
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"))\
+
     date: Mapped[date] = mapped_column(Date,default=date.today,nullable=False)
     status: Mapped[str] = mapped_column(String(20),default="present",nullable=False)
 
