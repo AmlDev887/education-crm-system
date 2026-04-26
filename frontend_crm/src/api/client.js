@@ -1,81 +1,42 @@
 /**
  * API Client — src/api/client.js
- *
  * Connected to FastAPI backend on http://localhost:8000
  */
 
 const BASE_URL = 'http://localhost:8000'
 
-/**
- * Вспомогательная функция для обработки ответов от сервера
- */
 async function handleResponse(response) {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Server Error' }));
-    throw new Error(error.detail || 'Ошибка связи с бэкендом');
+    const error = await response.json().catch(() => ({ detail: 'Server Error' }))
+    throw new Error(error.detail || 'Ошибка связи с бэкендом')
   }
-  return response.json();
+  return response.json()
 }
 
-// ─── TypeScript-style JSDoc interfaces ────────────────────────────
-/**
- * @typedef {Object} Student
- * @property {number}  id
- * @property {string}  fullname
- * @property {string}  email
- * @property {string}  phone
- * @property {number}  age
- * @property {'paid'|'unpaid'} status
- * @property {boolean} is_active
- * @property {string}  date_rage
- * @property {string}  last_payment_date
- */
-
-/**
- * @typedef {Object} Course
- * @property {number}  id
- * @property {string}  title
- * @property {string}  description
- * @property {number}  price
- * @property {number}  duration
- */
-
-/**
- * @typedef {Object} Payment
- * @property {number}  id
- * @property {number}  student_id
- * @property {number}  course_id
- * @property {number}  amount
- * @property {string}  payment_date
- */
-
-/**
- * @typedef {Object} Attendance
- * @property {number}  id
- * @property {number}  student_id
- * @property {number}  course_id
- * @property {string}  student_name
- * @property {string}  course_title
- * @property {string}  date
- * @property {'present'|'absent'} status
- */
-
-// ─── API METHODS ──────────────────────────────────────────────────
 export const api = {
-  // Students
+  // ─── AUTH ──────────────────────────────────────────────────────
+  async login(username, password) {
+    const response = await fetch(`${BASE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    })
+    return handleResponse(response)
+  },
+
+  async register(username, password) {
+    const response = await fetch(`${BASE_URL}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    })
+    return handleResponse(response)
+  },
+
+  // ─── STUDENTS ──────────────────────────────────────────────────
   async getStudents() {
-    const response = await fetch(`${BASE_URL}/students`);
-    return handleResponse(response);
-  },
-
-  async getCourse() {
-    const response = await fetch(`${BASE_URL}/courses`);
-    return handleResponse(response);
-  },
-
-  async getCourseTitles() {
-    const response = await fetch(`${BASE_URL}/courses/title`);
-    return handleResponse(response);
+    const response = await fetch(`${BASE_URL}/students`)
+    return handleResponse(response)
   },
 
   async addStudent(data) {
@@ -88,14 +49,16 @@ export const api = {
         phone: data.phone || '',
         age: Number(data.age),
         status: data.status,
-        is_active: data.is_active,
-        last_payment_date: new Date().toISOString(),
-        date_rage: data.date_rage
+        is_active: data.is_active ?? true,
+        date_rage: data.date_rage || new Date().toISOString(),
+        course: data.course,
       }),
-    });
-    return handleResponse(response);
+    })
+    return handleResponse(response)
   },
 
+  // PUT /students/{id} — не реализован в бэкенде.
+  // Оставлен чтобы не ломать Students.jsx — вернёт ошибку от сервера.
   async updateStudent(id, data) {
     const response = await fetch(`${BASE_URL}/students/${id}`, {
       method: 'PUT',
@@ -107,48 +70,40 @@ export const api = {
         age: Number(data.age),
         status: data.status,
         is_active: data.is_active,
-        date_rage: data.date_rage
+        date_rage: data.date_rage,
       }),
-    });
-    return handleResponse(response);
+    })
+    return handleResponse(response)
   },
 
   async deleteStudent(id) {
     const response = await fetch(`${BASE_URL}/students/${id}`, {
       method: 'DELETE',
-    });
-    return handleResponse(response);
+    })
+    return handleResponse(response)
   },
 
-  // Courses
+  // ─── COURSES ───────────────────────────────────────────────────
   async getCourses() {
-    const response = await fetch(`${BASE_URL}/courses`);
-    return handleResponse(response);
+    const response = await fetch(`${BASE_URL}/courses`)
+    return handleResponse(response)
   },
 
-  // Payments
-  async getPayments() {
-    const response = await fetch(`${BASE_URL}/payments`);
-    return handleResponse(response);
+  // Алиас — на случай если где-то используется getCourse() вместо getCourses()
+  async getCourse() {
+    const response = await fetch(`${BASE_URL}/courses`)
+    return handleResponse(response)
   },
 
-  async addPayment(data) {
-    const response = await fetch(`${BASE_URL}/payments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        student_id: data.student_id,
-        course_id: data.course_id,
-        amount: Number(data.amount)
-      }),
-    });
-    return handleResponse(response);
+  async getCourseTitles() {
+    const response = await fetch(`${BASE_URL}/courses/title`)
+    return handleResponse(response)
   },
 
-  // Attendance
+  // ─── ATTENDANCE ────────────────────────────────────────────────
   async getAttendance() {
-    const response = await fetch(`${BASE_URL}/attendance`);
-    return handleResponse(response);
+    const response = await fetch(`${BASE_URL}/attendance`)
+    return handleResponse(response)
   },
 
   async markAttendance(data) {
@@ -159,15 +114,66 @@ export const api = {
         student_id: data.student_id,
         course_id: data.course_id,
         status: data.status,
-        date: data.date || new Date().toISOString().split('T')[0]
+        date: data.date || new Date().toISOString().split('T')[0],
       }),
-    });
-    return handleResponse(response);
+    })
+    return handleResponse(response)
   },
 
-  // Dashboard stats
+  // ─── PAYMENTS ──────────────────────────────────────────────────
+  // POST /payments не реализован в бэкенде — только GET возвращает []
+  async getPayments() {
+    const response = await fetch(`${BASE_URL}/payments`)
+    return handleResponse(response)
+  },
+
+  // Оставлен чтобы не ломать Payments.jsx
+  // Вернёт ошибку пока POST /payments не добавлен в бэкенд
+  async addPayment(data) {
+    const response = await fetch(`${BASE_URL}/payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        student_id: data.student_id,
+        course_id: data.course_id,
+        amount: Number(data.amount),
+      }),
+    })
+    return handleResponse(response)
+  },
+
+  // ─── STATS ─────────────────────────────────────────────────────
+  // Бэкенд возвращает заглушку с нулями.
+  // Reports.jsx агрегирует данные сам из /students + /courses + /attendance
   async getStats() {
-    const response = await fetch(`${BASE_URL}/stats`);
-    return handleResponse(response);
+    const response = await fetch(`${BASE_URL}/stats`)
+    return handleResponse(response)
+  },
+
+  // ─── SETTINGS ──────────────────────────────────────────────────
+  // GET/POST /settings не реализованы в бэкенде.
+  // Settings.jsx работает с локальными дефолтами — эти методы не падают.
+  async getSettings() {
+    try {
+      const response = await fetch(`${BASE_URL}/settings`)
+      if (!response.ok) return {}
+      return response.json()
+    } catch {
+      return {}
+    }
+  },
+
+  async updateSettings(data) {
+    try {
+      const response = await fetch(`${BASE_URL}/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) return { ok: false }
+      return response.json()
+    } catch {
+      return { ok: false }
+    }
   },
 }

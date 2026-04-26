@@ -1,32 +1,73 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Search, Clock, Calendar, ChevronLeft, ChevronRight, Check, X, AlertCircle, Save, Target } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import {
+  Search, Clock, Calendar, ChevronLeft, ChevronRight,
+  Check, X, AlertCircle, Save, Target, Download,
+  CheckSquare, Users, TrendingUp, Zap
+} from 'lucide-react'
 import { api } from '@/api/client'
 import { Badge, PageHeader, Spinner, Avatar, getCourseColor, FilterTabs } from '@/components/ui'
 
+// ─── Тост-уведомления ────────────────────────────────────────────────────────
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const show = useCallback((msg, type = 'success') => {
+    const id = Date.now()
+    setToasts(p => [...p, { id, msg, type }])
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200)
+  }, [])
+  return { toasts, show }
+}
+
+function ToastContainer({ toasts }) {
+  if (!toasts.length) return null
+  return (
+    <div className="fixed top-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div key={t.id} className={`
+          flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold shadow-2xl
+          animate-in slide-in-from-right-4 duration-300
+          ${t.type === 'success' ? 'bg-success text-white' :
+            t.type === 'error' ? 'bg-danger text-white' :
+            'bg-slate-700 text-white'}
+        `}>
+          {t.type === 'success' ? <Check size={16} /> : <X size={16} />}
+          {t.msg}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Утилиты дат ─────────────────────────────────────────────────────────────
+const toISO = (d) => d.toISOString().split('T')[0]
+const isSameDay = (dateStr, d) => dateStr?.split('T')[0] === toISO(d)
+
+// ─── Главный компонент ───────────────────────────────────────────────────────
 export default function Attendance() {
   const [attendance, setAttendance] = useState([])
-  const [students, setStudents]     = useState([])
+  const [students, setStudents] = useState([])
   const [courseTitles, setCourseTitles] = useState([])
-  const [loading, setLoading]       = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
-  // Основные фильтры
-  const [filter, setFilter]         = useState('all')
+  const [filter, setFilter] = useState('all')
   const [courseFilter, setCourseFilter] = useState('all')
-  const [periodFilter, setPeriodFilter] = useState('day') // Добавлен фильтр периода
-  const [search, setSearch]         = useState('')
+  const [search, setSearch] = useState('')
 
-  const todayStr = new Date().toISOString().split('T')[0]
-  const [selectedDate, setDate]     = useState(todayStr)
+  const todayStr = useMemo(() => toISO(new Date()), [])
+  const [selectedDate, setSelectedDate] = useState(todayStr)
 
   const [activeMenu, setActiveMenu] = useState(null)
   const [activeHistory, setActiveHistory] = useState(null)
   const [viewDate, setViewDate] = useState(new Date())
-
-  // Стейт для локальных изменений до нажатия "Сохранить"
   const [localChanges, setLocalChanges] = useState({})
-  const [isSaving, setIsSaving] = useState(false)
+  const [selectAll, setSelectAll] = useState(null) // null | 'present' | 'absent'
 
-  const load = async () => {
+  const { toasts, show: showToast } = useToast()
+  const saveRef = useRef(null)
+
+  // ─── Загрузка данных ──────────────────────────────────────────────────────
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const [a, s, c] = await Promise.all([
@@ -43,36 +84,55 @@ export default function Attendance() {
         })))
       }
       setLocalChanges({})
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+    } catch (err) {
+      console.error(err)
+      showToast('Ошибка загрузки данных', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }, [showToast])
 
+  useEffect(() => { load() }, [load])
+
+  // ─── Закрытие попапов ─────────────────────────────────────────────────────
   useEffect(() => {
-    load()
-    const closeAll = () => { setActiveMenu(null); setActiveHistory(null) }
-    window.addEventListener('click', closeAll)
-    return () => window.removeEventListener('click', closeAll)
-  }, [selectedDate])
+    const close = () => { setActiveMenu(null); setActiveHistory(null) }
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [])
 
-  const combinedData = useMemo(() => {
-    return students.map(student => {
-      const records = attendance.filter(a => a.student_id === student.id)
-      const current = records.find(a => a.date.split('T')[0] === selectedDate)
+  // ─── Предупреждение при смене даты с несохранёнными изменениями ───────────
+  const handleDateChange = useCallback((newDate) => {
+    if (Object.keys(localChanges).length > 0) {
+      if (!window.confirm('Есть несохранённые изменения. Перейти без сохранения?')) return
+    }
+    setSelectedDate(newDate)
+    setLocalChanges({})
+    setFilter('all')
+  }, [localChanges])
 
-      // Если есть локальная правка — берем её, иначе из БД, иначе по умолчанию absent
-      const status = localChanges[student.id] || (current ? current.status : 'absent')
+  const shiftDate = useCallback((delta) => {
+    const d = new Date(selectedDate)
+    d.setDate(d.getDate() + delta)
+    handleDateChange(toISO(d))
+  }, [selectedDate, handleDateChange])
 
-      return {
-        ...student,
-        student_id: student.id,
-        student_name: student.fullname || student.name,
-        course_title: student.course || 'Backend',
-        status: status,
-        isEdited: !!localChanges[student.id],
-        updated_at: current?.updated_at || current?.date || null,
-        history: records
-      }
-    })
-  }, [students, attendance, selectedDate, localChanges])
+  // ─── Объединение данных ───────────────────────────────────────────────────
+  const combinedData = useMemo(() => students.map(student => {
+    const records = attendance.filter(a => a.student_id === student.id)
+    const current = records.find(a => a.date?.split('T')[0] === selectedDate)
+    const status = localChanges[student.id] ?? (current?.status ?? 'absent')
+    return {
+      ...student,
+      student_id: student.id,
+      student_name: student.fullname || student.name,
+      course_title: student.course || 'Backend',
+      status,
+      isEdited: localChanges[student.id] != null,
+      updated_at: current?.updated_at || current?.date || null,
+      history: records,
+    }
+  }), [students, attendance, selectedDate, localChanges])
 
   const filtered = useMemo(() => combinedData.filter(a => {
     const q = search.toLowerCase()
@@ -82,221 +142,513 @@ export default function Attendance() {
     return matchQ && matchF && matchC
   }), [combinedData, filter, search, courseFilter])
 
-  // Массовое сохранение правок
+  // ─── Статистика — считается от всей группы (с учётом курса) ──────────────
+  const stats = useMemo(() => {
+    const base = combinedData.filter(a =>
+      courseFilter === 'all' || a.course_title === courseFilter
+    )
+    const total = base.length
+    const present = base.filter(a => a.status === 'present').length
+    const excused = base.filter(a => a.status === 'excused').length
+    const absent = base.filter(a => a.status === 'absent').length
+    const efficiency = total > 0 ? Math.round(((present + excused) / total) * 100) : 0
+    return { total, present, excused, absent, efficiency }
+  }, [combinedData, courseFilter])
+
+  // ─── Сохранение ───────────────────────────────────────────────────────────
   const handleSaveAll = async () => {
+    if (isSaving) return
     setIsSaving(true)
     try {
-      const promises = Object.entries(localChanges).map(([id, stat]) => {
-        const student = students.find(s => s.id === parseInt(id))
-        return api.markAttendance({
-          student_id: parseInt(id),
-          status: stat,
-          date: selectedDate,
-          course_id: student?.course_id || 1
+      await Promise.all(
+        Object.entries(localChanges).map(([id, stat]) => {
+          const sid = parseInt(id, 10)
+          const student = students.find(s => s.id === sid)
+          return api.markAttendance({
+            student_id: sid,
+            status: stat,
+            date: selectedDate,
+            course_id: student?.course_id || 1,
+          })
         })
-      })
-      await Promise.all(promises)
+      )
+      showToast(`Сохранено ${Object.keys(localChanges).length} записей`)
       await load()
-    } catch (err) { console.error(err) } finally { setIsSaving(false) }
+    } catch (err) {
+      console.error(err)
+      showToast('Ошибка при сохранении', 'error')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  // Логика календаря в строках
-  const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate()
+  // ─── Массовое выделение ───────────────────────────────────────────────────
+  const handleMarkAll = useCallback((status) => {
+    const changes = {}
+    filtered.forEach(a => { changes[a.student_id] = status })
+    setLocalChanges(prev => ({ ...prev, ...changes }))
+    setSelectAll(status)
+    setTimeout(() => setSelectAll(null), 1200)
+  }, [filtered])
+
+  // ─── Изменение статуса одного ─────────────────────────────────────────────
+  const handleStatusChange = useCallback((studentId, status) => {
+    setLocalChanges(p => ({ ...p, [studentId]: status }))
+    setActiveMenu(null)
+  }, [])
+
+  // ─── Навигация по календарю ───────────────────────────────────────────────
+  const shiftMonth = useCallback((delta) => {
+    setViewDate(prev => {
+      const d = new Date(prev)
+      d.setMonth(d.getMonth() + delta)
+      return d
+    })
+  }, [])
+
   const calendarDays = useMemo(() => {
     const year = viewDate.getFullYear()
     const month = viewDate.getMonth()
-    return Array.from({ length: daysInMonth(year, month) }, (_, i) => i + 1)
+    return Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => i + 1)
   }, [viewDate])
 
-  return (
-    <div className="p-8 max-w-[1200px] animate-fade-in relative text-white pb-32">
-      <PageHeader tag="Журнал" title="Посещаемость" />
+  // ─── Экспорт CSV ──────────────────────────────────────────────────────────
+  const handleExport = useCallback(() => {
+    const rows = [['Студент', 'Курс', 'Статус', 'Дата']]
+    combinedData.forEach(a => {
+      rows.push([a.student_name, a.course_title, a.status, selectedDate])
+    })
+    const csv = rows.map(r => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `attendance_${selectedDate}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    showToast('Экспорт завершён')
+  }, [combinedData, selectedDate, showToast])
 
-      {/* ФИЛЬТРЫ ПЕРИОДА (День, Неделя, Месяц) */}
-      <div className="mb-6 flex gap-2">
-        {['day', 'week', 'month'].map((p) => (
+  // ─── Форматирование даты заголовка ────────────────────────────────────────
+  const dateLabel = useMemo(() => {
+    const d = new Date(selectedDate + 'T00:00:00')
+    if (selectedDate === todayStr) return 'Сегодня'
+    return d.toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' })
+  }, [selectedDate, todayStr])
+
+  const hasChanges = Object.keys(localChanges).length > 0
+
+  // ─── Рендер ───────────────────────────────────────────────────────────────
+  return (
+    <div className="p-6 md:p-8 max-w-[1200px] animate-fade-in relative text-white pb-28">
+      <ToastContainer toasts={toasts} />
+
+      {/* Заголовок + дата + быстрые действия */}
+      <div className="flex items-start justify-between mb-8 flex-wrap gap-4">
+        <div>
+          <PageHeader tag="Журнал" title="Посещаемость" />
+          <div className="flex items-center gap-3 mt-1">
+            <button
+              onClick={() => shiftDate(-1)}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => handleDateChange(e.target.value)}
+              className="bg-transparent text-sm font-semibold outline-none text-white/70 cursor-pointer hover:text-white transition-colors"
+            />
+            <button
+              onClick={() => shiftDate(1)}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
+            {selectedDate !== todayStr && (
+              <button
+                onClick={() => handleDateChange(todayStr)}
+                className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+              >
+                <Target size={12} /> Сегодня
+              </button>
+            )}
+            <span className="text-white/30 text-sm capitalize">{dateLabel}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
           <button
-            key={p}
-            onClick={() => setPeriodFilter(p)}
-            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all 
-              ${periodFilter === p 
-                ? 'bg-primary text-white shadow-lg shadow-primary/20' 
-                : 'bg-slate-900 text-white/40 border border-white/5 hover:text-white'}`}
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/70 hover:text-white"
           >
-            {p === 'day' ? 'День' : p === 'week' ? 'Неделя' : 'Месяц'}
+            <Download size={15} /> Экспорт
           </button>
+          <button
+            onClick={() => handleMarkAll('present')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+              selectAll === 'present'
+                ? 'bg-success border-success text-white'
+                : 'bg-success/10 border-success/30 text-success hover:bg-success/20'
+            }`}
+          >
+            <CheckSquare size={15} /> Все присутствуют
+          </button>
+        </div>
+      </div>
+
+      {/* Карточки статистики */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="relative overflow-hidden card p-5 bg-slate-900 border border-white/10 flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-white/40 text-xs font-semibold uppercase tracking-widest">
+            <TrendingUp size={12} /> Посещаемость
+          </div>
+          <div className={`text-3xl font-black tabular-nums ${stats.efficiency >= 80 ? 'text-success' : stats.efficiency >= 60 ? 'text-warning' : 'text-danger'}`}>
+            {stats.efficiency}<span className="text-lg">%</span>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/5">
+            <div
+              className={`h-full transition-all duration-700 ${stats.efficiency >= 80 ? 'bg-success' : stats.efficiency >= 60 ? 'bg-warning' : 'bg-danger'}`}
+              style={{ width: `${stats.efficiency}%` }}
+            />
+          </div>
+        </div>
+
+        {[
+          { label: 'Присутствует', value: stats.present, color: 'success', icon: Check },
+          { label: 'Уважительная', value: stats.excused, color: 'warning', icon: AlertCircle },
+          { label: 'Отсутствует', value: stats.absent, color: 'danger', icon: X },
+        ].map(({ label, value, color, icon: Icon }) => (
+          <div
+            key={label}
+            onClick={() => setFilter(prev => prev === label.toLowerCase() ? 'all' :
+              color === 'success' ? 'present' : color === 'warning' ? 'excused' : 'absent')}
+            className={`card p-5 border-l-4 cursor-pointer transition-all hover:scale-[1.02] border-${color} bg-${color}/10`}
+          >
+            <div className={`flex items-center gap-1.5 text-${color} text-xs font-semibold uppercase mb-2`}>
+              <Icon size={12} /> {label}
+            </div>
+            <div className="text-3xl font-black text-white tabular-nums">{value}</div>
+            <div className="text-xs text-white/30 mt-1">
+              {stats.total > 0 ? Math.round((value / stats.total) * 100) : 0}% от группы
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* КАРТОЧКИ */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="card p-4 bg-slate-900 border-white/10 text-center">
-            <div className="text-[10px] uppercase tracking-tighter text-white/40 font-bold mb-1">Курс</div>
-            <div className="text-xl font-black text-primary italic uppercase">Progressive</div>
-        </div>
-        <div className="card p-4 border-l-4 border-success bg-success/10">
-          <div className="text-success text-[10px] uppercase font-black">Присутствует</div>
-          <div className="text-3xl font-black text-white">{filtered.filter(a => a.status === 'present').length}</div>
-        </div>
-        <div className="card p-4 border-l-4 border-warning bg-warning/10">
-          <div className="text-warning text-[10px] uppercase font-black">Уважительная</div>
-          <div className="text-3xl font-black text-white">{filtered.filter(a => a.status === 'excused').length}</div>
-        </div>
-        <div className="card p-4 border-l-4 border-danger bg-danger/10">
-          <div className="text-danger text-[10px] uppercase font-black">Отсутствует</div>
-          <div className="text-3xl font-black text-white">{filtered.filter(a => a.status === 'absent').length}</div>
-        </div>
-      </div>
-
-      {/* ИНСТРУМЕНТЫ */}
-      <div className="flex gap-3 mb-6 items-center flex-wrap">
-        <div className="relative flex-1 min-w-[250px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск студента..." className="input-field pl-10 w-full bg-slate-900 text-white border-white/10" />
+      {/* Панель фильтров */}
+      <div className="flex gap-3 mb-5 items-center flex-wrap">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Поиск студента..."
+            className="input-field pl-9 w-full bg-slate-900 text-white border-white/10 text-sm"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        <select value={courseFilter} onChange={e => setCourseFilter(e.target.value)} className="input-field w-auto bg-slate-900 border-white/10 text-white font-bold">
+        <select
+          value={courseFilter}
+          onChange={e => setCourseFilter(e.target.value)}
+          className="input-field w-auto bg-slate-900 border-white/10 text-white text-sm font-semibold"
+        >
           <option value="all">Все курсы</option>
           {courseTitles.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
 
-        <div className="flex items-center gap-2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2">
-          <button onClick={(e) => { e.stopPropagation(); const d = new Date(selectedDate); d.setDate(d.getDate()-1); setDate(d.toISOString().split('T')[0]) }} className="text-primary hover:scale-125 transition-transform"><ChevronLeft size={18}/></button>
-
-          <input type="date" value={selectedDate} onChange={e => setDate(e.target.value)} className="bg-transparent text-sm font-black outline-none text-white uppercase cursor-pointer" />
-
-          {/* КНОПКА ТЕКУЩАЯ ДАТА (МАЯК) */}
-          <button
-            onClick={() => setDate(todayStr)}
-            className={`p-1.5 rounded-md transition-colors ${selectedDate === todayStr ? 'text-success' : 'text-white/40 hover:text-white'}`}
-            title="Сегодня"
-          >
-            <Target size={18} />
-          </button>
-
-          <button onClick={(e) => { e.stopPropagation(); const d = new Date(selectedDate); d.setDate(d.getDate()+1); setDate(d.toISOString().split('T')[0]) }} className="text-primary hover:scale-125 transition-transform"><ChevronRight size={18}/></button>
-        </div>
-
-        <FilterTabs value={filter} onChange={setFilter}
+        <FilterTabs
+          value={filter}
+          onChange={setFilter}
           options={[
             { value: 'all', label: 'Все' },
-            { value: 'present', label: 'Был' },
-            { value: 'absent', label: 'Нет' },
-            { value: 'excused', label: 'Причина' }
-          ]} />
+            { value: 'present', label: 'Присутствует' },
+            { value: 'absent', label: 'Отсутствует' },
+            { value: 'excused', label: 'Уважительная' },
+          ]}
+        />
+
+        {(filter !== 'all' || courseFilter !== 'all' || search) && (
+          <button
+            onClick={() => { setFilter('all'); setCourseFilter('all'); setSearch('') }}
+            className="text-xs text-white/40 hover:text-white transition-colors flex items-center gap-1"
+          >
+            <X size={12} /> Сбросить
+          </button>
+        )}
       </div>
 
+      {/* Таблица */}
       <div className="card overflow-visible border-white/10 bg-slate-900/50 backdrop-blur-md shadow-2xl">
-        {loading ? <div className="p-20 flex justify-center"><Spinner className="w-10 h-10 text-primary" /></div> : (
+        {loading ? (
+          <div className="p-20 flex justify-center">
+            <Spinner className="w-10 h-10 text-primary" />
+          </div>
+        ) : (
           <table className="w-full text-left">
-            <thead className="bg-white/5 font-black uppercase text-[11px] tracking-widest text-white/60 border-b border-white/10">
-              <tr>
-                <th className="py-5 pl-8">Студент</th>
+            <thead className="bg-white/5 border-b border-white/10">
+              <tr className="text-xs font-semibold uppercase tracking-widest text-white/40">
+                <th className="py-4 pl-6">
+                  <div className="flex items-center gap-2">
+                    <Users size={12} /> Студент
+                    {filtered.length !== combinedData.length && (
+                      <span className="text-primary font-bold">({filtered.length})</span>
+                    )}
+                  </div>
+                </th>
                 <th>Курс</th>
                 <th>Статус</th>
-                <th className="text-right pr-8">Активность</th>
+                <th className="text-right pr-6">Время / История</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(a => (
-                <tr key={a.student_id} className="hover:bg-white/5 transition-all border-b border-white/5 group">
-                  <td className="py-4 pl-8">
-                    <div className="flex items-center gap-4">
-                      <Avatar name={a.student_name} color={getCourseColor(a.course_title)} size="md" className="ring-2 ring-white/5" />
-                      <span className={`text-sm font-bold ${a.isEdited ? 'text-primary' : 'text-white'}`}>{a.student_name}</span>
-                    </div>
-                  </td>
-                  <td><Badge variant="outline" className="text-[10px] border-white/20 text-white/70">{a.course_title}</Badge></td>
-                  <td className="relative">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === a.student_id ? null : a.student_id) }}
-                      className="active:scale-95 transition-all outline-none"
-                    >
-                      <Badge type={a.status} className="w-44 justify-center py-2 text-[11px] font-black uppercase tracking-tighter shadow-xl text-white">
-                        {a.status === 'present' ? 'Присутствует' : a.status === 'absent' ? 'Отсутствует' : 'Уважительная'}
-                      </Badge>
-                    </button>
-
-                    {activeMenu === a.student_id && (
-                      <div className="absolute top-full left-0 mt-2 w-52 bg-slate-800 border border-white/20 rounded-2xl shadow-2xl z-[100] p-2 animate-in zoom-in duration-150">
-                        {[
-                          { id: 'present', label: 'Присутствует', icon: Check, color: 'text-success' },
-                          { id: 'absent', label: 'Отсутствует', icon: X, color: 'text-danger' },
-                          { id: 'excused', label: 'Уважительная', icon: AlertCircle, color: 'text-warning' }
-                        ].map(opt => (
-                          <button key={opt.id} onClick={() => { setLocalChanges(p => ({...p, [a.student_id]: opt.id})); setActiveMenu(null) }}
-                            className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-[11px] font-black uppercase text-white transition-colors">
-                            <opt.icon size={16} className={opt.color} />
-                            <span>{opt.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </td>
-
-                  <td className="text-right pr-8 relative">
-                    <div className="flex items-center justify-end gap-5">
-                      <div className="text-xs font-black text-white/40 flex items-center gap-1.5">
-                         <Clock size={12} />
-                         {a.updated_at ? new Date(a.updated_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}
-                      </div>
-
-                      <div className="relative">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setActiveHistory(activeHistory === a.student_id ? null : a.student_id); setViewDate(new Date()) }}
-                          className={`p-2.5 rounded-xl transition-all border-2 ${activeHistory === a.student_id ? 'bg-primary border-primary text-white scale-110 shadow-lg shadow-primary/30' : 'hover:bg-white/10 text-white/50 border-white/10'}`}
-                        >
-                          <Calendar size={18} />
-                        </button>
-
-                        {/* КАЛЕНДАРЬ ИСТОРИИ В СТРОКЕ */}
-                        {activeHistory === a.student_id && (
-                          <div className="absolute bottom-full right-0 mb-4 w-72 bg-slate-900 border-2 border-white/10 rounded-[2rem] shadow-2xl z-[100] p-5 animate-in slide-in-from-bottom-4 duration-300 backdrop-blur-xl">
-                            <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-3">
-                                <button onClick={(e) => { e.stopPropagation(); setViewDate(new Date(viewDate.setMonth(viewDate.getMonth()-1))) }} className="p-1 hover:text-primary text-white"><ChevronLeft size={20}/></button>
-                                <span className="text-[12px] font-black uppercase tracking-[0.2em] text-white">
-                                    {viewDate.toLocaleString('ru', { month: 'long', year: 'numeric' })}
-                                </span>
-                                <button onClick={(e) => { e.stopPropagation(); setViewDate(new Date(viewDate.setMonth(viewDate.getMonth()+1))) }} className="p-1 hover:text-primary text-white"><ChevronRight size={20}/></button>
-                            </div>
-                            <div className="grid grid-cols-7 gap-2">
-                              {calendarDays.map(day => {
-                                const currentViewDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day)
-                                const dayStatus = a.history.find(h => new Date(h.date).toDateString() === currentViewDate.toDateString())?.status;
-
-                                return (
-                                  <div key={day} className={`w-8 h-8 rounded-xl text-[11px] flex items-center justify-center font-black transition-all border border-white/5
-                                    ${dayStatus === 'present' ? 'bg-success text-white shadow-md shadow-success/20' : 
-                                      dayStatus === 'excused' ? 'bg-warning text-white shadow-md shadow-warning/20' : 
-                                      dayStatus === 'absent' ? 'bg-danger text-white shadow-md shadow-danger/20' : 'bg-white/5 text-white/30'}`}>
-                                    {day}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-16 text-center text-white/30 text-sm">
+                    <Search size={28} className="mx-auto mb-3 opacity-30" />
+                    Студенты не найдены
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map(a => (
+                  <StudentRow
+                    key={a.student_id}
+                    student={a}
+                    activeMenu={activeMenu}
+                    activeHistory={activeHistory}
+                    viewDate={viewDate}
+                    calendarDays={calendarDays}
+                    selectedDate={selectedDate}
+                    onMenuToggle={id => setActiveMenu(prev => prev === id ? null : id)}
+                    onHistoryToggle={id => {
+                      setActiveHistory(prev => prev === id ? null : id)
+                      setViewDate(new Date())
+                    }}
+                    onStatusChange={handleStatusChange}
+                    onMonthShift={shiftMonth}
+                  />
+                ))
+              )}
             </tbody>
           </table>
         )}
       </div>
 
-      {/* КНОПКА СОХРАНИТЬ В УГЛУ */}
-      {Object.keys(localChanges).length > 0 && (
-        <button
-          onClick={handleSaveAll}
-          disabled={isSaving}
-          className="fixed bottom-10 right-10 z-[50] flex items-center gap-3 bg-primary text-white px-8 py-4 rounded-xl font-black uppercase text-sm tracking-widest disabled:opacity-50 shadow-2xl transition-transform hover:-translate-y-1"
-        >
-          {isSaving ? <Spinner size="sm" /> : <Save size={20} />}
-          Сохранить ({Object.keys(localChanges).length})
-        </button>
+      {/* Floating save bar */}
+      {hasChanges && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[50] flex items-center gap-4 bg-slate-800 border border-white/20 px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-4 duration-300">
+          <div className="text-sm text-white/60">
+            Изменено: <span className="text-white font-bold">{Object.keys(localChanges).length}</span> студентов
+          </div>
+          <div className="w-px h-5 bg-white/10" />
+          <button
+            onClick={() => { setLocalChanges({}); showToast('Изменения отменены', 'error') }}
+            className="text-sm text-white/40 hover:text-white transition-colors"
+          >
+            Отмена
+          </button>
+          <button
+            ref={saveRef}
+            onClick={handleSaveAll}
+            disabled={isSaving}
+            className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-50 transition-all hover:bg-primary/90 active:scale-95"
+          >
+            {isSaving ? <Spinner size="sm" /> : <Save size={16} />}
+            Сохранить
+          </button>
+        </div>
       )}
     </div>
+  )
+}
+
+// ─── Строка студента (вынесена для чистоты) ───────────────────────────────────
+function StudentRow({
+  student: a,
+  activeMenu, activeHistory, viewDate, calendarDays, selectedDate,
+  onMenuToggle, onHistoryToggle, onStatusChange, onMonthShift
+}) {
+  const STATUS_OPTIONS = [
+    { id: 'present', label: 'Присутствует', icon: Check, color: 'text-success' },
+    { id: 'absent', label: 'Отсутствует', icon: X, color: 'text-danger' },
+    { id: 'excused', label: 'Уважительная', icon: AlertCircle, color: 'text-warning' },
+  ]
+
+  return (
+    <tr className="hover:bg-white/[0.03] transition-colors border-b border-white/5 group">
+      {/* Студент */}
+      <td className="py-3.5 pl-6">
+        <div className="flex items-center gap-3">
+          <Avatar
+            name={a.student_name}
+            color={getCourseColor(a.course_title)}
+            size="md"
+            className="ring-2 ring-white/5 flex-shrink-0"
+          />
+          <div>
+            <div className={`text-sm font-semibold ${a.isEdited ? 'text-primary' : 'text-white'}`}>
+              {a.student_name}
+              {a.isEdited && (
+                <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-primary/70 font-normal">
+                  <Zap size={9} /> изменено
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </td>
+
+      {/* Курс */}
+      <td>
+        <Badge variant="outline" className="text-xs border-white/20 text-white/60">
+          {a.course_title}
+        </Badge>
+      </td>
+
+      {/* Статус */}
+      <td className="relative py-2">
+        <button
+          onClick={e => { e.stopPropagation(); onMenuToggle(a.student_id) }}
+          className="active:scale-95 transition-transform outline-none"
+        >
+          <Badge
+            type={a.status}
+            className="w-40 justify-center py-1.5 text-xs font-semibold text-white"
+          >
+            {a.status === 'present' ? 'Присутствует' : a.status === 'absent' ? 'Отсутствует' : 'Уважительная'}
+          </Badge>
+        </button>
+
+        {activeMenu === a.student_id && (
+          <div
+            className="absolute top-full left-0 mt-2 w-48 bg-slate-800 border border-white/20 rounded-2xl shadow-2xl z-[100] p-1.5 animate-in zoom-in-95 duration-150"
+            onClick={e => e.stopPropagation()}
+          >
+            {STATUS_OPTIONS.map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => onStatusChange(a.student_id, opt.id)}
+                className={`flex items-center gap-3 w-full px-3 py-2.5 hover:bg-white/10 rounded-xl text-sm font-medium text-white transition-colors ${a.status === opt.id ? 'bg-white/10' : ''}`}
+              >
+                <opt.icon size={15} className={opt.color} />
+                {opt.label}
+                {a.status === opt.id && <Check size={12} className="ml-auto text-white/40" />}
+              </button>
+            ))}
+          </div>
+        )}
+      </td>
+
+      {/* Время + История */}
+      <td className="text-right pr-6 relative">
+        <div className="flex items-center justify-end gap-4">
+          <div className="text-xs text-white/30 flex items-center gap-1.5 tabular-nums">
+            <Clock size={11} />
+            {a.updated_at
+              ? new Date(a.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '--:--'}
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={e => { e.stopPropagation(); onHistoryToggle(a.student_id) }}
+              className={`p-2 rounded-xl transition-all border ${
+                activeHistory === a.student_id
+                  ? 'bg-primary border-primary text-white shadow-lg shadow-primary/30'
+                  : 'hover:bg-white/10 text-white/40 border-white/10 hover:text-white'
+              }`}
+            >
+              <Calendar size={16} />
+            </button>
+
+            {activeHistory === a.student_id && (
+              <div
+                className="absolute bottom-full right-0 mb-3 w-68 bg-slate-900 border border-white/15 rounded-2xl shadow-2xl z-[100] p-4 animate-in slide-in-from-bottom-3 duration-200"
+                style={{ width: '280px' }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Навигация по месяцу */}
+                <div className="flex items-center justify-between mb-4">
+                  <button
+                    onClick={() => onMonthShift(-1)}
+                    className="p-1.5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-xs font-semibold uppercase tracking-widest text-white capitalize">
+                    {viewDate.toLocaleString('ru', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <button
+                    onClick={() => onMonthShift(1)}
+                    className="p-1.5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                {/* Дни недели */}
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d => (
+                    <div key={d} className="text-center text-[10px] font-semibold text-white/25 py-1">{d}</div>
+                  ))}
+                </div>
+
+                {/* Дни */}
+                <div className="grid grid-cols-7 gap-1">
+                  {calendarDays.map(day => {
+                    const dayDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day)
+                    const dayStr = toISO(dayDate)
+                    const rec = a.history.find(h => h.date?.split('T')[0] === dayStr)
+                    const isToday = dayStr === toISO(new Date())
+                    const isSelected = dayStr === selectedDate
+
+                    return (
+                      <div
+                        key={day}
+                        className={`
+                          h-8 w-full rounded-lg text-[11px] flex items-center justify-center font-semibold transition-all
+                          ${rec?.status === 'present' ? 'bg-success/80 text-white' :
+                            rec?.status === 'excused' ? 'bg-warning/80 text-white' :
+                            rec?.status === 'absent' ? 'bg-danger/20 text-danger/80' :
+                            'bg-white/[0.04] text-white/20'}
+                          ${isSelected ? 'ring-2 ring-primary ring-offset-1 ring-offset-slate-900' : ''}
+                          ${isToday && !isSelected ? 'ring-1 ring-white/30' : ''}
+                        `}
+                        title={rec ? `${day}: ${rec.status}` : undefined}
+                      >
+                        {day}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Легенда */}
+                <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/10">
+                  {[
+                    { color: 'bg-success/80', label: 'Был' },
+                    { color: 'bg-warning/80', label: 'Причина' },
+                    { color: 'bg-danger/20', label: 'Нет' },
+                  ].map(({ color, label }) => (
+                    <div key={label} className="flex items-center gap-1.5 text-[10px] text-white/40">
+                      <span className={`w-2.5 h-2.5 rounded-sm ${color}`} />
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </td>
+    </tr>
   )
 }
