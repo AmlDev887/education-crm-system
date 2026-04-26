@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Search, Clock, Calendar, ChevronLeft, ChevronRight, Check, X, AlertCircle } from 'lucide-react'
+import { Search, Clock, Calendar, ChevronLeft, ChevronRight, Check, X, AlertCircle, Save, Target } from 'lucide-react'
 import { api } from '@/api/client'
 import { Badge, PageHeader, Spinner, Avatar, getCourseColor, FilterTabs } from '@/components/ui'
 
@@ -8,15 +8,23 @@ export default function Attendance() {
   const [students, setStudents]     = useState([])
   const [courseTitles, setCourseTitles] = useState([])
   const [loading, setLoading]       = useState(true)
+
+  // Основные фильтры
   const [filter, setFilter]         = useState('all')
   const [courseFilter, setCourseFilter] = useState('all')
+  const [periodFilter, setPeriodFilter] = useState('day') // Добавлен фильтр периода
   const [search, setSearch]         = useState('')
-  const [selectedDate, setDate]     = useState(new Date().toISOString().split('T')[0])
+
+  const todayStr = new Date().toISOString().split('T')[0]
+  const [selectedDate, setDate]     = useState(todayStr)
 
   const [activeMenu, setActiveMenu] = useState(null)
   const [activeHistory, setActiveHistory] = useState(null)
-  // Стейт для навигации по месяцам в логе
   const [viewDate, setViewDate] = useState(new Date())
+
+  // Стейт для локальных изменений до нажатия "Сохранить"
+  const [localChanges, setLocalChanges] = useState({})
+  const [isSaving, setIsSaving] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -34,6 +42,7 @@ export default function Attendance() {
           label: typeof course === 'object' ? course.title : course
         })))
       }
+      setLocalChanges({})
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
@@ -42,23 +51,28 @@ export default function Attendance() {
     const closeAll = () => { setActiveMenu(null); setActiveHistory(null) }
     window.addEventListener('click', closeAll)
     return () => window.removeEventListener('click', closeAll)
-  }, [])
+  }, [selectedDate])
 
   const combinedData = useMemo(() => {
     return students.map(student => {
       const records = attendance.filter(a => a.student_id === student.id)
       const current = records.find(a => a.date.split('T')[0] === selectedDate)
+
+      // Если есть локальная правка — берем её, иначе из БД, иначе по умолчанию absent
+      const status = localChanges[student.id] || (current ? current.status : 'absent')
+
       return {
         ...student,
         student_id: student.id,
         student_name: student.fullname || student.name,
         course_title: student.course || 'Backend',
-        status: current ? current.status : 'absent',
+        status: status,
+        isEdited: !!localChanges[student.id],
         updated_at: current?.updated_at || current?.date || null,
         history: records
       }
     })
-  }, [students, attendance, selectedDate])
+  }, [students, attendance, selectedDate, localChanges])
 
   const filtered = useMemo(() => combinedData.filter(a => {
     const q = search.toLowerCase()
@@ -68,20 +82,25 @@ export default function Attendance() {
     return matchQ && matchF && matchC
   }), [combinedData, filter, search, courseFilter])
 
-  const handleSetStatus = async (student, newStatus) => {
+  // Массовое сохранение правок
+  const handleSaveAll = async () => {
+    setIsSaving(true)
     try {
-      await api.markAttendance({
-        student_id: student.student_id,
-        status: newStatus,
-        date: selectedDate,
-        course_id: student.course_id || 1
+      const promises = Object.entries(localChanges).map(([id, stat]) => {
+        const student = students.find(s => s.id === parseInt(id))
+        return api.markAttendance({
+          student_id: parseInt(id),
+          status: stat,
+          date: selectedDate,
+          course_id: student?.course_id || 1
+        })
       })
+      await Promise.all(promises)
       await load()
-      setActiveMenu(null)
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error(err) } finally { setIsSaving(false) }
   }
 
-  // Логика календаря
+  // Логика календаря в строках
   const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate()
   const calendarDays = useMemo(() => {
     const year = viewDate.getFullYear()
@@ -90,8 +109,24 @@ export default function Attendance() {
   }, [viewDate])
 
   return (
-    <div className="p-8 max-w-[1200px] animate-fade-in relative text-white">
+    <div className="p-8 max-w-[1200px] animate-fade-in relative text-white pb-32">
       <PageHeader tag="Журнал" title="Посещаемость" />
+
+      {/* ФИЛЬТРЫ ПЕРИОДА (День, Неделя, Месяц) */}
+      <div className="mb-6 flex gap-2">
+        {['day', 'week', 'month'].map((p) => (
+          <button
+            key={p}
+            onClick={() => setPeriodFilter(p)}
+            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all 
+              ${periodFilter === p 
+                ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                : 'bg-slate-900 text-white/40 border border-white/5 hover:text-white'}`}
+          >
+            {p === 'day' ? 'День' : p === 'week' ? 'Неделя' : 'Месяц'}
+          </button>
+        ))}
+      </div>
 
       {/* КАРТОЧКИ */}
       <div className="grid grid-cols-4 gap-4 mb-6">
@@ -99,15 +134,15 @@ export default function Attendance() {
             <div className="text-[10px] uppercase tracking-tighter text-white/40 font-bold mb-1">Курс</div>
             <div className="text-xl font-black text-primary italic uppercase">Progressive</div>
         </div>
-        <div className="card p-4 border-l-4 border-success bg-success/10 shadow-lg shadow-success/5">
+        <div className="card p-4 border-l-4 border-success bg-success/10">
           <div className="text-success text-[10px] uppercase font-black">Присутствует</div>
           <div className="text-3xl font-black text-white">{filtered.filter(a => a.status === 'present').length}</div>
         </div>
-        <div className="card p-4 border-l-4 border-warning bg-warning/10 shadow-lg shadow-warning/5">
+        <div className="card p-4 border-l-4 border-warning bg-warning/10">
           <div className="text-warning text-[10px] uppercase font-black">Уважительная</div>
           <div className="text-3xl font-black text-white">{filtered.filter(a => a.status === 'excused').length}</div>
         </div>
-        <div className="card p-4 border-l-4 border-danger bg-danger/10 shadow-lg shadow-danger/5">
+        <div className="card p-4 border-l-4 border-danger bg-danger/10">
           <div className="text-danger text-[10px] uppercase font-black">Отсутствует</div>
           <div className="text-3xl font-black text-white">{filtered.filter(a => a.status === 'absent').length}</div>
         </div>
@@ -127,7 +162,18 @@ export default function Attendance() {
 
         <div className="flex items-center gap-2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2">
           <button onClick={(e) => { e.stopPropagation(); const d = new Date(selectedDate); d.setDate(d.getDate()-1); setDate(d.toISOString().split('T')[0]) }} className="text-primary hover:scale-125 transition-transform"><ChevronLeft size={18}/></button>
-          <input type="date" value={selectedDate} onChange={e => setDate(e.target.value)} className="bg-transparent text-sm font-black outline-none text-white uppercase" />
+
+          <input type="date" value={selectedDate} onChange={e => setDate(e.target.value)} className="bg-transparent text-sm font-black outline-none text-white uppercase cursor-pointer" />
+
+          {/* КНОПКА ТЕКУЩАЯ ДАТА (МАЯК) */}
+          <button
+            onClick={() => setDate(todayStr)}
+            className={`p-1.5 rounded-md transition-colors ${selectedDate === todayStr ? 'text-success' : 'text-white/40 hover:text-white'}`}
+            title="Сегодня"
+          >
+            <Target size={18} />
+          </button>
+
           <button onClick={(e) => { e.stopPropagation(); const d = new Date(selectedDate); d.setDate(d.getDate()+1); setDate(d.toISOString().split('T')[0]) }} className="text-primary hover:scale-125 transition-transform"><ChevronRight size={18}/></button>
         </div>
 
@@ -157,7 +203,7 @@ export default function Attendance() {
                   <td className="py-4 pl-8">
                     <div className="flex items-center gap-4">
                       <Avatar name={a.student_name} color={getCourseColor(a.course_title)} size="md" className="ring-2 ring-white/5" />
-                      <span className="text-sm font-bold text-white">{a.student_name}</span>
+                      <span className={`text-sm font-bold ${a.isEdited ? 'text-primary' : 'text-white'}`}>{a.student_name}</span>
                     </div>
                   </td>
                   <td><Badge variant="outline" className="text-[10px] border-white/20 text-white/70">{a.course_title}</Badge></td>
@@ -178,7 +224,7 @@ export default function Attendance() {
                           { id: 'absent', label: 'Отсутствует', icon: X, color: 'text-danger' },
                           { id: 'excused', label: 'Уважительная', icon: AlertCircle, color: 'text-warning' }
                         ].map(opt => (
-                          <button key={opt.id} onClick={() => handleSetStatus(a, opt.id)}
+                          <button key={opt.id} onClick={() => { setLocalChanges(p => ({...p, [a.student_id]: opt.id})); setActiveMenu(null) }}
                             className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-[11px] font-black uppercase text-white transition-colors">
                             <opt.icon size={16} className={opt.color} />
                             <span>{opt.label}</span>
@@ -203,7 +249,7 @@ export default function Attendance() {
                           <Calendar size={18} />
                         </button>
 
-                        {/* ПОЛНОЦЕННЫЙ КАЛЕНДАРЬ */}
+                        {/* КАЛЕНДАРЬ ИСТОРИИ В СТРОКЕ */}
                         {activeHistory === a.student_id && (
                           <div className="absolute bottom-full right-0 mb-4 w-72 bg-slate-900 border-2 border-white/10 rounded-[2rem] shadow-2xl z-[100] p-5 animate-in slide-in-from-bottom-4 duration-300 backdrop-blur-xl">
                             <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-3">
@@ -228,11 +274,6 @@ export default function Attendance() {
                                 )
                               })}
                             </div>
-                            <div className="mt-5 pt-4 border-t border-white/10 flex justify-around text-[12px] font-black italic">
-                               <div className="text-success">✔ {a.history.filter(h=>h.status==='present').length}</div>
-                               <div className="text-warning">? {a.history.filter(h=>h.status==='excused').length}</div>
-                               <div className="text-danger">✖ {a.history.filter(h=>h.status==='absent').length}</div>
-                            </div>
                           </div>
                         )}
                       </div>
@@ -245,14 +286,17 @@ export default function Attendance() {
         )}
       </div>
 
-      <div className="mt-8 flex justify-between items-center text-[11px] text-white/40 uppercase font-black tracking-widest px-6">
-        <span>Всего в списке: {filtered.length}</span>
-        <div className="flex gap-8">
-          <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-success"></div> Был</span>
-          <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-warning"></div> Причина</span>
-          <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-danger"></div> Нет</span>
-        </div>
-      </div>
+      {/* КНОПКА СОХРАНИТЬ В УГЛУ */}
+      {Object.keys(localChanges).length > 0 && (
+        <button
+          onClick={handleSaveAll}
+          disabled={isSaving}
+          className="fixed bottom-10 right-10 z-[50] flex items-center gap-3 bg-primary text-white px-8 py-4 rounded-xl font-black uppercase text-sm tracking-widest disabled:opacity-50 shadow-2xl transition-transform hover:-translate-y-1"
+        >
+          {isSaving ? <Spinner size="sm" /> : <Save size={20} />}
+          Сохранить ({Object.keys(localChanges).length})
+        </button>
+      )}
     </div>
   )
 }
