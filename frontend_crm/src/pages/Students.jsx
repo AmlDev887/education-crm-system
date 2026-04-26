@@ -51,8 +51,9 @@ function StudentModal({ student, onClose, onSave, courseTitles }) {
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
 
+    // СВЯЗЬ С БЭКЕНДОМ: Сопоставляем поля с твоей моделью в FastAPI
     const backendData = {
-      fullname: form.name,
+      fullname: form.name,        // Передаем 'name' из формы в 'fullname' бэкенда
       email: form.email,
       phone: form.phone || '',
       age: parseInt(form.age),
@@ -60,7 +61,7 @@ function StudentModal({ student, onClose, onSave, courseTitles }) {
       status: form.status,
       is_active: form.is_active,
       last_payment_date: new Date().toISOString(),
-      date_rage: new Date(form.enrolled).toISOString()
+      date_rage: new Date(form.enrolled).toISOString() // Превращаем дату в ISO для БД
     };
 
     try {
@@ -144,7 +145,7 @@ export default function Students() {
   const load = async () => {
     setLoading(true)
     try {
-      const [sData, cData] = await Promise.all([api.getStudents(), api.getCourses()]) // Используй getCourses
+      const [sData, cData] = await Promise.all([api.getStudents(), api.getCourses()])
       setStudents(sData)
 
       if (Array.isArray(cData)) {
@@ -220,10 +221,10 @@ export default function Students() {
                 <tr key={s.id} className="hover:bg-bg-3 transition-colors group border-b border-border/50">
                   <td className="td">
                     <div className="flex items-center gap-3">
-                      <Avatar name={s.fullname} color={getCourseColor(s.course)} />
+                      <Avatar name={s.fullname || s.name} color={getCourseColor(s.course)} />
                       <div>
                         <div className="text-sm font-medium flex items-center gap-2">
-                          {s.fullname}
+                          {s.fullname || s.name}
                           {s.is_active ? <CheckCircle2 size={12} className="text-success" /> : <XCircle size={12} className="text-txt-muted" />}
                         </div>
                         <div className="text-[11px] text-txt-muted">{s.email}</div>

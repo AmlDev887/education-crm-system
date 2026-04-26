@@ -3,7 +3,7 @@ from click.formatting import join_options
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session,joinedload
-from datetime import datetime,timezone
+from datetime import datetime,timezone,date
 from typing import List
 
 import models
@@ -143,29 +143,25 @@ def get_payments():
 #─── ATTENDANCE ───────────────────────────────────────────────────────
 @app.get("/attendance", response_model=List[schemas.AttendanceResponse])
 def get_attendance(db: Session = Depends(get_db)):
-
-    my_attendance = (
-        db.query(models.AttendanceBase)
-        .options(
-            joinedload(models.AttendanceBase.course),
-            joinedload(models.AttendanceBase.student)
-        )
-        .all()
-    )
-    result=[]
-    for att in my_attendance:
-        result.append(
-            {
-                "id": att.id,
-                "student_id": att.student_id,
-                "course_id": att.course_id,
-                "status": att.status
-            }
-        )
+    return db.query(models.AttendanceBase).options(
+        joinedload(models.AttendanceBase.student),
+        joinedload(models.AttendanceBase.course)
+    ).all()
 
 @app.post("/attendance",response_model = schemas.AttendanceResponse)
-def post_attendence():
-    
+def post_attendance(atten_in: schemas.AttendanceCreate, db: Session = Depends(get_db)):
+    new_atten = models.AttendanceBase(
+        student_id = atten_in.student_id,
+        course_id = atten_in.course_id,
+        date = atten_in.date,
+        status = atten_in.status
+    )
+    db.add(new_atten)
+    db.commit()
+    db.refresh(new_atten)
+
+    return new_atten
+
 
 if __name__ == "__main__":
 

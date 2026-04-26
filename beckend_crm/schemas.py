@@ -1,5 +1,5 @@
-from datetime import datetime
-from pydantic import BaseModel,Field, field_validator,EmailStr
+from datetime import datetime,date
+from pydantic import BaseModel,Field, field_validator,EmailStr,ConfigDict
 from typing import Optional
 
 class User(BaseModel):
@@ -50,19 +50,19 @@ class AttendanceResponse(BaseModel):
     id: int
     student_id: int
     course_id: int
-    date: Date
+    date: date
     status: str
+    student_name: str
+    course_title: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AttendanceCreate(BaseModel):
     student_id: int
     course_id: int
     status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 

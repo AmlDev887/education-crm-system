@@ -21,46 +21,41 @@ async function handleResponse(response) {
 /**
  * @typedef {Object} Student
  * @property {number}  id
- * @property {string}  name
+ * @property {string}  fullname
  * @property {string}  email
  * @property {string}  phone
- * @property {string}  course
+ * @property {number}  age
  * @property {'paid'|'unpaid'} status
- * @property {string}  enrolled   — ISO date YYYY-MM-DD
- * @property {number}  balance    — amount owed in UZS
+ * @property {boolean} is_active
+ * @property {string}  date_rage
+ * @property {string}  last_payment_date
  */
 
 /**
  * @typedef {Object} Course
  * @property {number}  id
  * @property {string}  title
- * @property {string}  instructor
- * @property {number}  students
- * @property {string}  duration
+ * @property {string}  description
  * @property {number}  price
- * @property {'active'|'upcoming'} status
- * @property {string}  color
- * @property {string}  tag
+ * @property {number}  duration
  */
 
 /**
  * @typedef {Object} Payment
  * @property {number}  id
- * @property {number}  studentId
- * @property {string}  studentName
- * @property {string}  course
+ * @property {number}  student_id
+ * @property {number}  course_id
  * @property {number}  amount
- * @property {string}  date
- * @property {'card'|'cash'|'transfer'} method
- * @property {'paid'|'pending'} status
+ * @property {string}  payment_date
  */
 
 /**
  * @typedef {Object} Attendance
  * @property {number}  id
- * @property {number}  studentId
- * @property {string}  studentName
- * @property {string}  course
+ * @property {number}  student_id
+ * @property {number}  course_id
+ * @property {string}  student_name
+ * @property {string}  course_title
  * @property {string}  date
  * @property {'present'|'absent'} status
  */
@@ -88,15 +83,14 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        fullname: data.fullname,    // Используем данные из обновленной формы
+        fullname: data.fullname,
         email: data.email,
         phone: data.phone || '',
-        age: Number(data.age),      // Теперь возраст динамический
-        course: data.course,
+        age: Number(data.age),
         status: data.status,
-        is_active: data.is_active,  // Учитываем статус активности
+        is_active: data.is_active,
         last_payment_date: new Date().toISOString(),
-        date_rage: data.date_rage   // ISO строка
+        date_rage: data.date_rage
       }),
     });
     return handleResponse(response);
@@ -111,7 +105,6 @@ export const api = {
         email: data.email,
         phone: data.phone,
         age: Number(data.age),
-        course: data.course,
         status: data.status,
         is_active: data.is_active,
         date_rage: data.date_rage
@@ -143,7 +136,11 @@ export const api = {
     const response = await fetch(`${BASE_URL}/payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        student_id: data.student_id,
+        course_id: data.course_id,
+        amount: Number(data.amount)
+      }),
     });
     return handleResponse(response);
   },
@@ -158,7 +155,12 @@ export const api = {
     const response = await fetch(`${BASE_URL}/attendance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        student_id: data.student_id,
+        course_id: data.course_id,
+        status: data.status,
+        date: data.date || new Date().toISOString().split('T')[0]
+      }),
     });
     return handleResponse(response);
   },
