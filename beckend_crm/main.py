@@ -8,6 +8,7 @@ from typing import List
 
 import models
 import schemas
+from EduCRM.beckend_crm.schemas import AttendanceUpdate
 from database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
@@ -20,7 +21,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# ─── AUTHENTICATION ────────────────────────────────────────────────
+# ================================== AUTHENTICATION ======================================
 @app.post("/register", status_code=status.HTTP_201_CREATED)
 def register_user(user_in: schemas.User, db: Session = Depends(get_db)):
     db_user = db.query(models.UserBase).filter(models.UserBase.username == user_in.username).first()
@@ -57,7 +58,8 @@ def login(user_in: schemas.User,db: Session = Depends(get_db)):
         )
     return {"message": "Успешный вход", "username": user.username, "role": user.role}
 
-# ─── STUDENTS ──────────────────────────────────────────────────────
+# =============================== STUDENTS =======================================
+
 @app.get("/students", response_model=List[schemas.StudentResponse])
 def get_all_students(db: Session = Depends(get_db)):
 
@@ -113,7 +115,7 @@ def delete_student(student_id: int, db: Session = Depends(get_db)):
     return {"message": "Student deleted"}
 
 
-# ─── COURSES ───────────────────────────────────────────────────────
+# ======================= COURSES ========================================
 
 @app.get("/courses")
 def get_courses(db: Session = Depends(get_db)):
@@ -140,7 +142,9 @@ def get_stats():
 @app.get("/payments")
 def get_payments():
     return []
-#─── ATTENDANCE ───────────────────────────────────────────────────────
+
+#=====================ATTENDANCE=================================================
+
 @app.get("/attendance", response_model=List[schemas.AttendanceResponse])
 def get_attendance(db: Session = Depends(get_db)):
     return db.query(models.AttendanceBase).options(
@@ -153,7 +157,7 @@ def post_attendance(atten_in: schemas.AttendanceCreate, db: Session = Depends(ge
     new_atten = models.AttendanceBase(
         student_id = atten_in.student_id,
         course_id = atten_in.course_id,
-        date = atten_in.date,
+        # date = atten_in.date,  <-- база сама поставит текущую дату по умолчанию
         status = atten_in.status
     )
     db.add(new_atten)
@@ -161,6 +165,28 @@ def post_attendance(atten_in: schemas.AttendanceCreate, db: Session = Depends(ge
     db.refresh(new_atten)
 
     return new_atten
+
+@app.patch("/attendance",response_model = schemas.AttendanceResponse)
+def atten_update(update_in: List[AttendanceUpdate],db: Session= Depends(get_db)):
+    record_update = []
+
+    for item in update_in:
+        record = db.query(models.AttendanceBase).filter(models.AttendanceBase.id == item.id).first()
+
+        if record:
+            record.status = item.status
+            record_update.append(record)
+
+        else:
+            raise HTTPException (
+                status_code=404,
+                detail="Студент не найден"
+            )
+    db.commit()
+    for r in record_update:
+        db.refresh(r)
+
+    return record_update
 
 
 if __name__ == "__main__":

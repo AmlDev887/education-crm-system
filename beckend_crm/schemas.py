@@ -61,6 +61,13 @@ class AttendanceCreate(BaseModel):
     student_id: int
     course_id: int
     status: str
+    date: date  # Или str, если не используешь тип date
+
+model_config = ConfigDict(from_attributes=True)
+
+class AttendanceUpdate(BaseModel):
+    id: int
+    status: str
 
     model_config = ConfigDict(from_attributes=True)
 

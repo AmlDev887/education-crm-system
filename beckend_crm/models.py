@@ -1,5 +1,3 @@
-from tkinter.constants import CURRENT
-
 from sqlalchemy import String, DateTime, Integer, ForeignKey, Boolean,Table,Column,Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship # Добавили relationship
 from database import Base

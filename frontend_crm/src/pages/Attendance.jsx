@@ -156,31 +156,40 @@ export default function Attendance() {
   }, [combinedData, courseFilter])
 
   // ─── Сохранение ───────────────────────────────────────────────────────────
-  const handleSaveAll = async () => {
-    if (isSaving) return
-    setIsSaving(true)
-    try {
-      await Promise.all(
-        Object.entries(localChanges).map(([id, stat]) => {
-          const sid = parseInt(id, 10)
-          const student = students.find(s => s.id === sid)
-          return api.markAttendance({
-            student_id: sid,
-            status: stat,
-            date: selectedDate,
-            course_id: student?.course_id || 1,
-          })
-        })
-      )
-      showToast(`Сохранено ${Object.keys(localChanges).length} записей`)
-      await load()
-    } catch (err) {
-      console.error(err)
-      showToast('Ошибка при сохранении', 'error')
-    } finally {
-      setIsSaving(false)
-    }
+const handleSaveAll = async () => {
+  if (isSaving) return;
+  setIsSaving(true);
+  try {
+    const promises = Object.entries(localChanges).map(([studentId, stat]) => {
+      const sid = parseInt(studentId, 10);
+
+      // Находим студента, чтобы вытащить его course_id
+      const student = students.find(s => s.id === sid);
+
+      // ВНИМАНИЕ: Если у тебя в student.id_course или student.course_id
+      // лежит ID, используй его. Если там строка "Python", это может быть причиной 422.
+      const payload = {
+        student_id: sid,
+        course_id: student?.course_id || 1, // Поставь 1 для теста
+        status: stat,
+        date: selectedDate
+      };
+
+      console.log("Отправка в API:", payload);
+      return api.markAttendance(payload);
+    });
+
+    await Promise.all(promises);
+    showToast("Данные успешно созданы!");
+    setLocalChanges({});
+    await load();
+  } catch (err) {
+    console.error("Детали ошибки:", err);
+    showToast("Ошибка 422: проверь типы данных", "error");
+  } finally {
+    setIsSaving(false);
   }
+};
 
   // ─── Массовое выделение ───────────────────────────────────────────────────
   const handleMarkAll = useCallback((status) => {
