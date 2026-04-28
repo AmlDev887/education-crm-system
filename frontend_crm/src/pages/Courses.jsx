@@ -121,65 +121,64 @@ function CourseCard({ course: c }) {
   const MAX_CAPACITY = 30
   const pct = Math.min(((c.studentCount) / MAX_CAPACITY) * 100, 100)
 
+  const statusMap = {
+    active: 'Активен',
+    upcoming: 'В наборе'
+  }
+
   return (
-    <div
-      className="card card-hover cursor-pointer overflow-hidden group"
-      style={{ '--hover-border': c.color }}
-    >
-      {/* Color accent top bar */}
+    <div className="card card-hover cursor-pointer overflow-hidden group" style={{ '--hover-border': c.color }}>
       <div className="h-[3px]" style={{ background: c.color }} />
 
       <div className="p-5">
-        {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
             <div className="text-[10px] font-mono text-txt-dim uppercase tracking-widest mb-1.5">
-              {c.tag || 'COURSE'}
+              НАПРАВЛЕНИЕ
             </div>
             <h3 className="font-semibold text-base leading-tight truncate">{c.title}</h3>
-            {c.description && (
-              <div className="text-xs text-txt-muted mt-1 line-clamp-2">{c.description}</div>
-            )}
-            <div className="text-xs text-txt-muted mt-1">{c.instructor || 'Staff'}</div>
+            {/* Если в описании кракозябры, мы можем временно выводить заглушку */}
+            <div className="text-xs text-txt-muted mt-1 line-clamp-2">
+              {c.description && !c.description.includes('') ? c.description : 'Описание курса в разработке...'}
+            </div>
+            <div className="text-xs text-txt-muted mt-1">Преподаватель: {c.instructor || 'Сотрудник'}</div>
           </div>
-          <Badge type={c.status}>{c.status}</Badge>
+          <Badge type={c.status}>{statusMap[c.status] || 'Новый'}</Badge>
         </div>
 
-        {/* Stats grid */}
         <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border">
           <div>
-            <div className="flex items-center gap-1 text-[10px] font-mono text-txt-dim uppercase mb-1">
-              <Users size={9} /> Students
+            <div className="flex items-center gap-1 text-[9px] font-mono text-txt-dim uppercase mb-1">
+              <Users size={9} /> Студенты
             </div>
             <div className="text-xl font-bold" style={{ color: c.color }}>
               {c.studentCount}
             </div>
           </div>
           <div>
-            <div className="flex items-center gap-1 text-[10px] font-mono text-txt-dim uppercase mb-1">
-              <Clock size={9} /> Duration
+            <div className="flex items-center gap-1 text-[9px] font-mono text-txt-dim uppercase mb-1">
+              <Clock size={9} /> Длительность
             </div>
             <div className="text-xs font-medium text-txt mt-1">
-              {c.duration ? `${c.duration} days` : 'N/A'}
+              {c.duration ? `${c.duration} мес.` : '—'}
             </div>
           </div>
           <div>
-            <div className="flex items-center gap-1 text-[10px] font-mono text-txt-dim uppercase mb-1">
-              <DollarSign size={9} /> Price
+            <div className="flex items-center gap-1 text-[9px] font-mono text-txt-dim uppercase mb-1">
+              <DollarSign size={9} /> Цена
             </div>
             <div className="text-[11px] font-mono text-txt-muted mt-1 leading-tight">
-              {c.price ? (c.price / 1_000_000).toFixed(1) + 'M' : '0M'} UZS
+              {c.price ? (c.price / 1_000_000).toFixed(1) + 'М' : '0М'} сум
             </div>
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="mt-4">
           <div className="flex justify-between text-[10px] font-mono text-txt-dim mb-1.5">
-            <span>Capacity</span>
+            <span>Заполненность группы</span>
             <span>
               {c.studentCount}/{MAX_CAPACITY}
-              {pct >= 90 && <span className="text-danger ml-1">· Almost full</span>}
+              {pct >= 90 && <span className="text-danger ml-1">· Мест нет</span>}
             </span>
           </div>
           <div className="h-1.5 bg-bg-4 rounded-full overflow-hidden">

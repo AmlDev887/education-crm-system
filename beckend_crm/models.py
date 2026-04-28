@@ -36,7 +36,7 @@ class CoursesBase(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(35), nullable=False)
     description: Mapped[str] = mapped_column(String(200))
-    price: Mapped[int] = mapped_column(Integer, nullable=False)
+    price: Mapped[float] = mapped_column(Integer, nullable=False)
     duration: Mapped[int] = mapped_column(Integer)
 
     students = relationship("StudentsBase",secondary=student_course,back_populates="courses")
