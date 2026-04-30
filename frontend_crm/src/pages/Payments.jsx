@@ -34,10 +34,6 @@ function BackendNotice() {
   return (
     <div className="mb-5 flex items-start gap-3 px-4 py-3 rounded-lg bg-accent/5 border border-accent/20 relative">
       <Info size={14} className="text-accent mt-0.5 flex-shrink-0" />
-      <div className="text-xs text-txt-muted">
-        <span className="text-accent font-medium font-mono">POST /payments</span> эндпоинт пока не реализован на бэкенде.
-        Запись платежей станет доступна после расширения серверной части.
-      </div>
       <button
         onClick={() => setVisible(false)}
         className="absolute top-2 right-2 text-txt-muted hover:text-txt transition-colors"
@@ -112,6 +108,21 @@ export default function Payments() {
     }
   }
   useEffect(() => { load() }, [])
+
+  // ── смена статуса ──
+  const toggleStatus = async (id, currentStatus) => {
+    const nextStatus = currentStatus === 'paid' ? 'pending' : 'paid'
+    try {
+      await api.updatePaymentStatus(id, nextStatus)
+      // Оптимистичное обновление стейта
+      setPayments(prev => prev.map(p =>
+        p.id === id ? { ...p, status: nextStatus } : p
+      ))
+    } catch (err) {
+      console.error("Status update failed:", err)
+      alert("Не удалось обновить статус: " + err.message)
+    }
+  }
 
   // ── сортировка ──
   const handleSort = (field) => {
@@ -360,7 +371,7 @@ export default function Payments() {
             icon={Search}
             message={
               payments.length === 0
-                ? 'Платежей пока нет. После реализации POST /payments данные появятся здесь.'
+                ? 'Платежей пока нет.'
                 : 'По вашему запросу ничего не найдено. Попробуйте изменить фильтры.'
             }
           />
@@ -374,7 +385,6 @@ export default function Payments() {
                   <th className="th">Курс</th>
                   <SortHeader label="Сумма" field="amount" sort={sort} onSort={handleSort} />
                   <th className="th">Метод</th>
-                  {/* Вот эти две колонки для дат */}
                   <SortHeader label="Дата оплаты" field="payment_date" sort={sort} onSort={handleSort} />
                   <SortHeader label="След. платёж" field="next_payment_date" sort={sort} onSort={handleSort} />
                   <th className="th">Статус</th>
@@ -413,7 +423,6 @@ export default function Payments() {
                           </div>
                         </td>
 
-                        {/* Колонки с датами, которые мы "перехватили" на бэкенде */}
                         <td className="td text-xs font-mono text-txt-muted whitespace-nowrap">
                           {dateStr}
                         </td>
@@ -430,9 +439,27 @@ export default function Payments() {
                         </td>
 
                         <td className="td">
-                          <Badge type={p.status}>
-                            {STATUS_LABEL[p.status] || p.status}
-                          </Badge>
+                          <button
+                            onClick={() => toggleStatus(p.id, p.status)}
+                            className={`group flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all active:scale-95 ${
+                              p.status === 'paid'
+                                ? 'bg-success/10 border-success/20 text-success hover:bg-success/20'
+                                : 'bg-warning/10 border-warning/20 text-warning hover:bg-warning/20'
+                            }`}
+                            title="Нажмите, чтобы сменить статус"
+                          >
+                            <div className="relative w-3.5 h-3.5 flex items-center justify-center">
+                               {p.status === 'paid' ? (
+                                 <CheckCircle2 size={14} className="text-success" />
+                               ) : (
+                                 <Clock size={14} className="text-warning" />
+                               )}
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider">
+                              {STATUS_LABEL[p.status] || p.status}
+                            </span>
+                            <RefreshCw size={10} className="opacity-0 group-hover:opacity-40 transition-opacity ml-0.5" />
+                          </button>
                         </td>
                       </tr>
                     )

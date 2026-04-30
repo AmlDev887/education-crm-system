@@ -121,9 +121,16 @@ export const api = {
   },
 
   // ─── PAYMENTS ──────────────────────────────────────────────────
-  // POST /payments не реализован в бэкенде — только GET возвращает []
   async getPayments() {
     const response = await fetch(`${BASE_URL}/payments`)
+    return handleResponse(response)
+  },
+
+  // Метод для быстрого обновления статуса платежа (PATCH)
+  async updatePaymentStatus(id, newStatus) {
+    const response = await fetch(`${BASE_URL}/payments/${id}/status?new_status=${newStatus}`, {
+      method: 'PATCH',
+    })
     return handleResponse(response)
   },
 
