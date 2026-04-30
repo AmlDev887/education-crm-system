@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,47 +7,246 @@
 @layer base {
   * { box-sizing: border-box; }
   html, body, #root { height: 100%; }
+
   body {
-    background: #0a0a0d;
+    background: #09090d;
     color: #eae8e3;
     font-family: 'Syne', sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  ::-webkit-scrollbar { width: 4px; height: 4px; background: #0f0f14; }
-  ::-webkit-scrollbar-thumb { background: #1e1e28; border-radius: 4px; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar       { width: 4px; height: 4px; background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.4); }
+
   input, select, textarea, button { font-family: 'Syne', sans-serif; }
+
+  /* JetBrains Mono for monospaced elements */
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Date input icon color */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.3);
+    cursor: pointer;
+  }
 }
 
 @layer components {
+
+  /* ── Cards ── */
   .card {
-    @apply bg-bg-2 border border-border rounded-lg;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
   }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+    pointer-events: none;
+  }
+
   .card-hover {
-    @apply transition-all duration-150 hover:border-border-2 hover:-translate-y-0.5;
+    transition: all 0.2s ease;
   }
+  .card-hover:hover {
+    border-color: rgba(124,58,237,0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(124,58,237,0.1);
+  }
+
+  /* ── Buttons ── */
   .btn-primary {
-    @apply bg-accent hover:bg-accent-hover text-white font-medium text-sm px-4 py-2 rounded-lg transition-all duration-150 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    border: 1px solid rgba(167,139,250,0.3);
+    color: white;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(124,58,237,0.3);
+    cursor: pointer;
   }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    box-shadow: 0 4px 16px rgba(124,58,237,0.4);
+    transform: translateY(-1px);
+  }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
   .btn-ghost {
-    @apply bg-transparent hover:bg-bg-3 text-txt-muted border border-border font-medium text-sm px-4 py-2 rounded-lg transition-all duration-150 flex items-center gap-2;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.5);
+    font-weight: 500;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    cursor: pointer;
   }
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.8);
+  }
+  .btn-ghost:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
   .btn-danger {
-    @apply bg-danger-dim hover:bg-danger/20 text-danger border border-danger-border font-medium text-sm px-3 py-1.5 rounded-lg transition-all duration-150 flex items-center gap-1.5;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2);
+    color: #f87171;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    cursor: pointer;
   }
+  .btn-danger:hover {
+    background: rgba(239,68,68,0.15);
+    border-color: rgba(239,68,68,0.35);
+  }
+
+  /* ── Input ── */
   .input-field {
-    @apply w-full bg-bg-3 border border-border text-txt text-sm rounded-lg px-3 py-2.5 outline-none transition-colors duration-150 focus:border-accent-border placeholder-txt-muted;
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #eae8e3;
+    font-size: 13px;
+    border-radius: 8px;
+    padding: 10px 12px;
+    outline: none;
+    transition: all 0.15s ease;
+    font-family: 'Syne', sans-serif;
   }
+  .input-field::placeholder { color: rgba(255,255,255,0.2); }
+  .input-field:focus {
+    border-color: rgba(124,58,237,0.5);
+    background: rgba(124,58,237,0.04);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.08);
+  }
+  .input-field:hover:not(:focus) {
+    border-color: rgba(255,255,255,0.12);
+  }
+
+  /* ── Labels ── */
   .label {
-    @apply text-[11px] text-txt-muted font-mono uppercase tracking-widest mb-1.5 block;
+    display: block;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 6px;
   }
-  .badge-paid    { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-success-dim text-success border border-success-border; }
-  .badge-unpaid  { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-danger-dim text-danger border border-danger-border; }
-  .badge-active  { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-accent-dim text-violet-300 border border-accent-border; }
-  .badge-upcoming{ @apply text-[11px] font-mono px-2 py-0.5 rounded bg-warn-dim text-warn border border-warn-border; }
-  .badge-present { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-success-dim text-success border border-success-border; }
-  .badge-absent  { @apply text-[11px] font-mono px-2 py-0.5 rounded bg-danger-dim text-danger border border-danger-border; }
-  .th { @apply text-[11px] text-txt-muted font-mono uppercase tracking-widest px-4 py-3 text-left font-normal border-b border-border; }
-  .td { @apply px-4 py-3 text-sm border-b border-border/60; }
-  .page-title { @apply text-2xl font-bold mb-1; }
-  .page-tag   { @apply text-[11px] font-mono text-accent tracking-widest uppercase mb-1.5; }
+
+  /* ── Badges ── */
+  .badge-paid    { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 6px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: #34d399; }
+  .badge-unpaid  { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 6px; background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.25);  color: #f87171; }
+  .badge-active  { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 6px; background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.25); color: #c4b5fd; }
+  .badge-upcoming{ display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 6px; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); color: #fbbf24; }
+  .badge-present { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 6px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: #34d399; }
+  .badge-absent  { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 6px; background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.25);  color: #f87171; }
+
+  /* ── Table ── */
+  .th {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.25);
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.015);
+    white-space: nowrap;
+  }
+  .td {
+    padding: 12px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: middle;
+  }
+
+  /* ── Page header ── */
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #f0eef9;
+    line-height: 1.2;
+  }
+  .page-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(124,58,237,0.6);
+    margin-bottom: 6px;
+  }
+  .page-tag::before {
+    content: '';
+    display: block;
+    width: 12px;
+    height: 1px;
+    background: #7c3aed;
+  }
+
+  /* ── Animations ── */
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 4px rgba(124,58,237,0.4); }
+    50%       { box-shadow: 0 0 12px rgba(124,58,237,0.8); }
+  }
+
+  .animate-fade-in  { animation: fade-in 0.25s ease both; }
+  .animate-slide-up { animation: slide-up 0.2s ease both; }
+  .animate-spin     { animation: spin 0.8s linear infinite; }
+  .animate-pulse-glow { animation: pulse-glow 2s ease infinite; }
+
+  /* ── Selection ── */
+  ::selection {
+    background: rgba(124,58,237,0.3);
+    color: #f0eef9;
+  }
 }
