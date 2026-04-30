@@ -5,7 +5,7 @@ from typing import Optional
 class User(BaseModel):
     username: str= Field(...,min_length=2,max_length=100)
     password: str= Field(...,min_length=2,max_length=21)
-
+#=========================Student==============================
 class StudentSearch(BaseModel):
     query: str = ""
 
@@ -45,7 +45,22 @@ class StudentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+#=======================Courses============================
 
+class CoursesResponse(BaseModel):
+    id: int
+    title: str
+    description: str
+    price: float
+    duration: int
+
+    students: list[StudentResponse] = []
+    courses: list[StudentResponse] = []
+
+    class Config:
+        from_attributes = True
+
+#=====================Attendance===========================
 class AttendanceResponse(BaseModel):
     id: int
     student_id: int

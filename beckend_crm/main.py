@@ -128,7 +128,7 @@ def get_course_titles(db: Session = Depends(get_db)):
     courses = db.query(models.CoursesBase.title).all()
     return [c[0] for c in courses]
 
-
+#=========================Stats==================================================
 @app.get("/stats")
 def get_stats():
     # Заглушка, чтобы Dashboard не падал
@@ -138,6 +138,7 @@ def get_stats():
         "totalRevenue": 0,
         "attendanceRate": 0
     }
+#=======================Payments=================================================
 
 @app.get("/payments")
 def get_payments():
