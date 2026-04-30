@@ -86,6 +86,8 @@ class AttendanceUpdate(BaseModel):
     status: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
 #=====================Payments=====================
 class PaymentsResponse(BaseModel):
     student_name: str | None = None
@@ -97,7 +99,11 @@ class PaymentsResponse(BaseModel):
     next_payment_date: datetime
 
     model_config = ConfigDict(from_attributes=True)
+class PaymentsUpdate(BaseModel):
+    id: int
+    status: str
 
+    model_config = ConfigDict(from_attributes=True)
 
 
 
