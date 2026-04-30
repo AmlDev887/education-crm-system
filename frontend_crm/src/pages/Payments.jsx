@@ -370,66 +370,74 @@ export default function Payments() {
               <thead className="bg-bg-1">
                 <tr>
                   <th className="th w-10">#</th>
-                  <SortHeader label="Студент"     field="studentName"  sort={sort} onSort={handleSort} />
+                  <SortHeader label="Студент" field="studentName" sort={sort} onSort={handleSort} />
                   <th className="th">Курс</th>
-                  <SortHeader label="Сумма"       field="amount"       sort={sort} onSort={handleSort} />
+                  <SortHeader label="Сумма" field="amount" sort={sort} onSort={handleSort} />
                   <th className="th">Метод</th>
-                  <SortHeader label="Дата"        field="payment_date" sort={sort} onSort={handleSort} />
-                  <th className="th">След. платёж</th>
+                  {/* Вот эти две колонки для дат */}
+                  <SortHeader label="Дата оплаты" field="payment_date" sort={sort} onSort={handleSort} />
+                  <SortHeader label="След. платёж" field="next_payment_date" sort={sort} onSort={handleSort} />
                   <th className="th">Статус</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p, i) => {
-                  const MethodIcon  = METHOD_ICON[p.method] || CreditCard
-                  const studentName = getField(p, 'studentName', 'fullname', 'student_name')
-                  const courseName  = getField(p, 'course', 'course_title')
-                  const dateStr     = fmtDate(p.payment_date || p.date)
-                  const nextDateStr = fmtDate(p.next_payment_date)
+                  {filtered.map((p, i) => {
+                    const MethodIcon  = METHOD_ICON[p.method] || CreditCard
+                    const studentName = getField(p, 'studentName', 'fullname', 'student_name')
+                    const courseName  = getField(p, 'course', 'course_title')
+                    const dateStr     = fmtDate(p.payment_date)
+                    const nextDateStr = fmtDate(p.next_payment_date)
 
-                  return (
-                    <tr key={p.id ?? i} className="hover:bg-bg-3 transition-colors border-t border-border/40">
-                      <td className="td text-xs text-txt-muted font-mono">{p.id}</td>
-                      <td className="td">
-                        <div className="font-medium text-sm leading-tight">{studentName}</div>
-                      </td>
-                      <td className="td">
-                        <div
-                          className="text-xs text-txt-muted max-w-[160px] truncate"
-                          title={courseName !== '—' ? courseName : undefined}
-                        >
-                          {courseName}
-                        </div>
-                      </td>
-                      <td className="td">
-                        <span className="text-sm font-mono font-semibold">{fmtUZS(p.amount)}</span>
-                      </td>
-                      <td className="td">
-                        <div className="flex items-center gap-1.5 text-xs text-txt-muted whitespace-nowrap">
-                          <MethodIcon size={12} />
-                          <span>{METHOD_LABEL[p.method] || p.method || '—'}</span>
-                        </div>
-                      </td>
-                      <td className="td text-xs font-mono text-txt-muted whitespace-nowrap">
-                        {dateStr}
-                      </td>
-                      <td className="td text-xs font-mono text-txt-muted whitespace-nowrap">
-                        {nextDateStr !== '—' ? (
-                          <span className="flex items-center gap-1">
-                            <CalendarDays size={10} className="text-accent" />
-                            {nextDateStr}
-                          </span>
-                        ) : '—'}
-                      </td>
-                      <td className="td">
-                        <Badge type={p.status}>
-                          {STATUS_LABEL[p.status] || p.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
+                    return (
+                      <tr key={p.id ?? i} className="hover:bg-bg-3 transition-colors border-t border-border/40">
+                        <td className="td text-xs text-txt-muted font-mono">{p.id}</td>
+
+                        <td className="td">
+                          <div className="font-medium text-sm leading-tight">{studentName}</div>
+                        </td>
+
+                        <td className="td">
+                          <div className="text-xs text-txt-muted max-w-[160px] truncate" title={courseName}>
+                            {courseName}
+                          </div>
+                        </td>
+
+                        <td className="td">
+                          <span className="text-sm font-mono font-semibold">{fmtUZS(p.amount)}</span>
+                        </td>
+
+                        <td className="td">
+                          <div className="flex items-center gap-1.5 text-xs text-txt-muted whitespace-nowrap">
+                            <MethodIcon size={12} />
+                            <span>{METHOD_LABEL[p.method] || p.method || '—'}</span>
+                          </div>
+                        </td>
+
+                        {/* Колонки с датами, которые мы "перехватили" на бэкенде */}
+                        <td className="td text-xs font-mono text-txt-muted whitespace-nowrap">
+                          {dateStr}
+                        </td>
+
+                        <td className="td text-xs font-mono whitespace-nowrap">
+                          {nextDateStr !== '—' ? (
+                            <span className="flex items-center gap-1 text-accent">
+                              <CalendarDays size={10} />
+                              {nextDateStr}
+                            </span>
+                          ) : (
+                            <span className="text-txt-muted opacity-50">—</span>
+                          )}
+                        </td>
+
+                        <td className="td">
+                          <Badge type={p.status}>
+                            {STATUS_LABEL[p.status] || p.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
             </table>
 
             {/* Футер таблицы */}

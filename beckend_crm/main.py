@@ -145,7 +145,13 @@ def get_stats():
 
 @app.get("/payments", response_model=List[PaymentsResponse])
 def get_payments(db:Session = Depends(get_db)):
-    my_payments = db.query(models.PaymentsBase).all()
+    my_payments = db.query(models.PaymentsBase).options(
+        joinedload(models.PaymentsBase.student),
+        joinedload(models.PaymentsBase.course)).all()
+    for p in my_payments:
+        p.student_name = p.student.fullname if p.student else "Удален"
+        p.course_title = p.course.title if p.course else "Нет курса"
+
     return my_payments
 #=====================ATTENDANCE=================================================
 
