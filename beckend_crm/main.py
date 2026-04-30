@@ -7,7 +7,7 @@ from typing import List
 
 import models
 import schemas
-from EduCRM.beckend_crm.schemas import AttendanceUpdate
+from EduCRM.beckend_crm.schemas import AttendanceUpdate, PaymentsResponse
 from database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
@@ -143,10 +143,10 @@ def get_stats():
     }
 #=======================Payments=================================================
 
-@app.get("/payments")
-def get_payments():
-    return []
-
+@app.get("/payments", response_model=List[PaymentsResponse])
+def get_payments(db:Session = Depends(get_db)):
+    my_payments = db.query(models.PaymentsBase).all()
+    return my_payments
 #=====================ATTENDANCE=================================================
 
 @app.get("/attendance", response_model=List[schemas.AttendanceResponse])

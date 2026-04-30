@@ -1,4 +1,6 @@
 from datetime import datetime,date
+from email.mime import base
+
 from pydantic import BaseModel,Field, field_validator,EmailStr,ConfigDict
 from typing import Optional
 
@@ -85,6 +87,14 @@ class AttendanceUpdate(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class PaymentsResponse(BaseModel):
+    amount: int
+    payment_date: date
+    method: str
+    status: str
+    next_payment_date: date
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 

@@ -1,5 +1,5 @@
-from sqlalchemy import String, DateTime, Integer, ForeignKey,Float, Boolean,Table,Column,Date
-from sqlalchemy.orm import Mapped, mapped_column, relationship # Добавили relationship
+from sqlalchemy import String, DateTime, Integer, ForeignKey,Float, Boolean,Table,Column,Date,func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 from datetime import datetime,date
 
@@ -64,13 +64,18 @@ class AttendanceBase(Base):
 class PaymentsBase(Base):
     __tablename__ = "payments" # Маленькими буквами для порядка
     id: Mapped[int] = mapped_column(primary_key=True)
-    student_id: Mapped[int] = mapped_column(ForeignKey("students.id"))
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"))
+    student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"))
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
-    payment_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    payment_date: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    method: Mapped[str] = mapped_column(String(60), nullable=False, default="card")
+    status: Mapped[str] = mapped_column(String(60), nullable=False, default="paid")
+    next_payment_date: Mapped[date] = mapped_column(DateTime, nullable=True)
 
-    student = relationship("StudentsBase",back_populates="payments")
-    course = relationship("CoursesBase",back_populates="payments")
+
+
+    student: Mapped["StudentsBase"] = relationship("StudentsBase", back_populates="payments")
+    course: Mapped["CoursesBase"] = relationship("CoursesBase", back_populates="payments")
 
 
 
