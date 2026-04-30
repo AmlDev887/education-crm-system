@@ -51,11 +51,10 @@ class CoursesResponse(BaseModel):
     id: int
     title: str
     description: str
-    price: float
-    duration: int
+    price: float | None
+    duration: int | None
 
     students: list[StudentResponse] = []
-    courses: list[StudentResponse] = []
 
     class Config:
         from_attributes = True

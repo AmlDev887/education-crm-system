@@ -1,5 +1,4 @@
 import uvicorn
-from click.formatting import join_options
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session,joinedload
@@ -117,10 +116,14 @@ def delete_student(student_id: int, db: Session = Depends(get_db)):
 
 # ======================= COURSES ========================================
 
-@app.get("/courses")
+@app.get("/courses",response_model=List[schemas.CoursesResponse])
 def get_courses(db: Session = Depends(get_db)):
+    courses = db.query(models.CoursesBase).options(joinedload(models.CoursesBase.students)).all()
     # Возвращаем полные объекты курсов для страницы "Курсы" и селектов
-    return db.query(models.CoursesBase).all()
+    if not courses:
+        raise HTTPException(status_code=404,detail="Курсы не найдены!")
+
+    return courses
 
 
 @app.get("/courses/title")

@@ -4,8 +4,10 @@ import { api } from '@/api/client'
 import { Badge, Button, FilterTabs, PageHeader, Spinner, Empty } from '@/components/ui'
 
 function fmtUZS(val) {
-  if (!val) return '0 UZS'
-  return new Intl.NumberFormat('uz-UZ').format(val) + ' UZS'
+  if (!val) return '0 сум'
+  // Если в базе 500, превращаем в 500 000 для красивого вывода, если 1.5М — оставляем
+  const fullVal = val < 1000 ? val * 1000 : val
+  return new Intl.NumberFormat('uz-UZ').format(fullVal) + ' сум'
 }
 
 export default function Courses() {
@@ -33,37 +35,38 @@ export default function Courses() {
   }, [])
 
   // Курс считается active если у него есть студенты, upcoming — если нет
-  // Так как бэкенд не возвращает поле status — определяем сами
   const enriched = courses.map(c => ({
     ...c,
+    price: Number(c.price || 0),
     studentCount: c.students?.length ?? 0,
-    status: c.status || (c.students?.length > 0 ? 'active' : 'upcoming'),
+    // ВАЖНО: Добавляем выбор цвета, иначе всё будет серым
     color: c.color || courseColor(c.id),
+    status: c.students?.length > 0 ? 'active' : 'upcoming',
   }))
 
   const filtered = enriched.filter(c => filter === 'all' || c.status === filter)
 
   return (
     <div className="p-8 max-w-[1200px] animate-fade-in">
-      <PageHeader tag="Catalog" title="Courses">
+      <PageHeader tag="Каталог" title="Курсы">
         <Button variant="ghost" onClick={loadCourses} disabled={loading}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
         </Button>
       </PageHeader>
 
-      {/* Summary bar */}
+      {/* Панель сводки */}
       <div className="flex gap-4 mb-6">
         <div className="card flex-1 p-4 flex items-center gap-3">
           <BookOpen size={16} className="text-accent" />
           <div>
-            <div className="label">Total Courses</div>
+            <div className="label">Всего курсов</div>
             <div className="text-xl font-bold font-mono">{courses.length}</div>
           </div>
         </div>
         <div className="card flex-1 p-4 flex items-center gap-3">
           <Users size={16} style={{ color: '#10b981' }} />
           <div>
-            <div className="label">Total Students</div>
+            <div className="label">Всего студентов</div>
             <div className="text-xl font-bold font-mono" style={{ color: '#10b981' }}>
               {enriched.reduce((a, c) => a + c.studentCount, 0)}
             </div>
@@ -72,11 +75,19 @@ export default function Courses() {
         <div className="card flex-1 p-4 flex items-center gap-3">
           <DollarSign size={16} style={{ color: '#f59e0b' }} />
           <div>
-            <div className="label">Avg Price</div>
+            <div className="label">Средняя цена</div>
             <div className="text-xl font-bold font-mono" style={{ color: '#f59e0b' }}>
-              {courses.length
-                ? ((courses.reduce((a, c) => a + (c.price || 0), 0) / courses.length) / 1_000_000).toFixed(1) + 'M'
-                : '0M'}
+              {enriched.length ? (() => {
+                const avg = enriched.reduce((a, c) => a + (Number(c.price) || 0), 0) / enriched.length;
+                return (
+                  <div className="flex items-baseline gap-1">
+                    {avg < 1000 ? avg.toFixed(0) : (avg / 1_000_000).toFixed(1)}
+                    <span className="text-[14px] font-medium opacity-90 uppercase ml-0.5">
+                      {avg < 1000 ? 'K' : 'M'} <span className="text-[10px] lowercase italic">сум</span>
+                    </span>
+                  </div>
+                );
+              })() : '0 сум'}
             </div>
           </div>
         </div>
@@ -87,16 +98,16 @@ export default function Courses() {
           value={filter}
           onChange={setFilter}
           options={[
-            { value: 'all', label: `All (${enriched.length})` },
-            { value: 'active', label: `Active (${enriched.filter(c => c.status === 'active').length})` },
-            { value: 'upcoming', label: `Upcoming (${enriched.filter(c => c.status === 'upcoming').length})` },
+            { value: 'all', label: `Все (${enriched.length})` },
+            { value: 'active', label: `Активные (${enriched.filter(c => c.status === 'active').length})` },
+            { value: 'upcoming', label: `В наборе (${enriched.filter(c => c.status === 'upcoming').length})` },
           ]}
         />
       </div>
 
       {error && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-danger/10 border border-danger/20 text-sm text-danger font-mono">
-          ⚠ {error}
+          ⚠ Ошибка: {error}
         </div>
       )}
 
@@ -105,7 +116,7 @@ export default function Courses() {
           <Spinner />
         </div>
       ) : filtered.length === 0 ? (
-        <Empty message="No courses found in database" />
+        <Empty message="Курсы не найдены в базе данных" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(c => (
@@ -137,7 +148,6 @@ function CourseCard({ course: c }) {
               НАПРАВЛЕНИЕ
             </div>
             <h3 className="font-semibold text-base leading-tight truncate">{c.title}</h3>
-            {/* Если в описании кракозябры, мы можем временно выводить заглушку */}
             <div className="text-xs text-txt-muted mt-1 line-clamp-2">
               {c.description && !c.description.includes('') ? c.description : 'Описание курса в разработке...'}
             </div>
@@ -157,7 +167,7 @@ function CourseCard({ course: c }) {
           </div>
           <div>
             <div className="flex items-center gap-1 text-[9px] font-mono text-txt-dim uppercase mb-1">
-              <Clock size={9} /> Длительность
+              <Clock size={9} /> Период
             </div>
             <div className="text-xs font-medium text-txt mt-1">
               {c.duration ? `${c.duration} мес.` : '—'}
@@ -165,10 +175,19 @@ function CourseCard({ course: c }) {
           </div>
           <div>
             <div className="flex items-center gap-1 text-[9px] font-mono text-txt-dim uppercase mb-1">
-              <DollarSign size={9} /> Цена
+              <DollarSign size={9} /> Стоимость
             </div>
-            <div className="text-[11px] font-mono text-txt-muted mt-1 leading-tight">
-              {c.price ? (c.price / 1_000_000).toFixed(1) + 'М' : '0М'} сум
+            <div className="mt-1 leading-tight flex items-baseline gap-1">
+              <span className="text-[16px] font-bold font-mono text-white tracking-tight">
+                {c.price < 1000 ? c.price : (c.price / 1_000_000).toFixed(1)}
+                {/* Теперь буква белая только здесь, внутри курса */}
+                <span className="text-[13px] text-white ml-0.5">
+                  {c.price < 1000 ? 'K' : 'M'}
+                </span>
+              </span>
+              <span className="text-[10px] font-medium text-txt-dim lowercase italic">
+                сум
+              </span>
             </div>
           </div>
         </div>
