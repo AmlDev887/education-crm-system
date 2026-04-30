@@ -5,21 +5,21 @@ import { Badge, Button, PageHeader, FilterTabs, Spinner, Empty, fmtUZS } from '@
 
 const METHOD_ICON = { card: CreditCard, cash: Banknote, transfer: ArrowLeftRight }
 
-// ─── Info Banner ──────────────────────────────────────────────────
-// Показываем баннер что POST /payments ещё не реализован на бэкенде
+// ─── Инфо-баннер ──────────────────────────────────────────────────
+// Уведомление о том, что функционал добавления оплат еще не готов на бэкенде
 function BackendNotice() {
   return (
     <div className="mb-5 flex items-start gap-3 px-4 py-3 rounded-lg bg-accent/5 border border-accent/20">
       <Info size={14} className="text-accent mt-0.5 flex-shrink-0" />
       <div className="text-xs text-txt-muted">
-        <span className="text-accent font-medium font-mono">POST /payments</span> endpoint is not yet implemented in the backend.
-        Payment recording will be available once the backend is extended.
+        <span className="text-accent font-medium font-mono">POST /payments</span> эндпоинт еще не реализован на бэкенде.
+        Запись платежей станет доступна после расширения серверной части.
       </div>
     </div>
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────
+// ─── Основной компонент ───────────────────────────────────────────────
 export default function Payments() {
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -63,21 +63,20 @@ export default function Payments() {
 
   return (
     <div className="p-8 max-w-[1200px] animate-fade-in">
-      <PageHeader tag="Finance" title="Payments">
+      <PageHeader tag="Финансы" title="Платежи">
         <Button variant="ghost" onClick={load} disabled={loading}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
         </Button>
-        {/* Кнопка "Record Payment" убрана — POST /payments не существует в бэкенде */}
       </PageHeader>
 
       <BackendNotice />
 
-      {/* Summary */}
+      {/* Сводка */}
       <div className="flex gap-4 mb-6">
         {[
-          { label: 'Total Collected', value: fmtUZS(totalPaid), color: '#10b981' },
-          { label: 'Paid Transactions', value: paidCount, color: '#eae8e3' },
-          { label: 'Pending', value: pendingCount, color: '#f43f5e' },
+          { label: 'Всего собрано', value: fmtUZS(totalPaid), color: '#10b981' },
+          { label: 'Оплаченных транзакций', value: paidCount, color: '#eae8e3' },
+          { label: 'В ожидании', value: pendingCount, color: '#f43f5e' },
         ].map(s => (
           <div key={s.label} className="card flex-1 p-4">
             <div className="label">{s.label}</div>
@@ -86,14 +85,14 @@ export default function Payments() {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Фильтры */}
       <div className="flex gap-3 mb-5 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search payments..."
+            placeholder="Поиск платежей..."
             className="input-field pl-8"
           />
         </div>
@@ -101,16 +100,16 @@ export default function Payments() {
           value={filter}
           onChange={setFilter}
           options={[
-            { value: 'all', label: 'All' },
-            { value: 'paid', label: 'Paid' },
-            { value: 'pending', label: 'Pending' },
+            { value: 'all', label: 'Все' },
+            { value: 'paid', label: 'Оплачено' },
+            { value: 'pending', label: 'Ожидание' },
           ]}
         />
       </div>
 
       {error && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-danger/10 border border-danger/20 text-sm text-danger font-mono">
-          ⚠ {error}
+          ⚠ Ошибка: {error}
         </div>
       )}
 
@@ -121,8 +120,8 @@ export default function Payments() {
           <Empty
             message={
               payments.length === 0
-                ? 'No payments in database yet. Add POST /payments to your backend to enable recording.'
-                : 'No payments match your search.'
+                ? 'В базе данных пока нет платежей. Добавьте POST /payments на бэкенд, чтобы включить запись.'
+                : 'По вашему запросу ничего не найдено.'
             }
             icon={Search}
           />
@@ -130,12 +129,12 @@ export default function Payments() {
           <table className="w-full">
             <thead className="bg-bg-1">
               <tr>
-                <th className="th">Student</th>
-                <th className="th">Course</th>
-                <th className="th">Amount</th>
-                <th className="th">Method</th>
-                <th className="th">Date</th>
-                <th className="th">Status</th>
+                <th className="th">Студент</th>
+                <th className="th">Курс</th>
+                <th className="th">Сумма</th>
+                <th className="th">Метод</th>
+                <th className="th">Дата</th>
+                <th className="th">Статус</th>
               </tr>
             </thead>
             <tbody>
@@ -144,8 +143,10 @@ export default function Payments() {
                 const studentName = p.studentName || p.fullname || p.student_name || '—'
                 const courseName = p.course || p.course_title || '—'
                 const dateStr = p.payment_date
-                  ? new Date(p.payment_date).toLocaleDateString()
+                  ? new Date(p.payment_date).toLocaleDateString('ru-RU')
                   : p.date || '—'
+
+                const methodLabels = { card: 'Карта', cash: 'Наличные', transfer: 'Перевод' }
 
                 return (
                   <tr key={p.id} className="hover:bg-bg-3 transition-colors">
@@ -155,12 +156,14 @@ export default function Payments() {
                     <td className="td">
                       <div className="flex items-center gap-1.5 text-xs text-txt-muted">
                         <MethodIcon size={12} />
-                        <span className="capitalize">{p.method || '—'}</span>
+                        <span>{methodLabels[p.method] || p.method || '—'}</span>
                       </div>
                     </td>
                     <td className="td text-xs font-mono text-txt-muted">{dateStr}</td>
                     <td className="td">
-                      <Badge type={p.status}>{p.status}</Badge>
+                      <Badge type={p.status}>
+                        {p.status === 'paid' ? 'Оплачено' : p.status === 'pending' ? 'Ожидание' : p.status}
+                      </Badge>
                     </td>
                   </tr>
                 )
