@@ -154,17 +154,23 @@ def get_payments(db:Session = Depends(get_db)):
 
     return my_payments
 
-@app.patch("/payments",response_model=List[PaymentsResponse])
-def payments_status(status_in: List[PaymentsUpdate],db: Session = Depends(get_db)):
-    my_status = []
 
-    for st in my_status:
-        biker = db.query(models.PaymentsBase).filter(models.PaymentsBase.id == st.id).first()
-        if biker:
-            biker.status = st.status
-            my_status.append(biker)
+@app.patch("/payments/{payment_id}/status")
+def patch_payment_status(
+        payment_id: int,
+        new_status: str,
+        db: Session = Depends(get_db)
+):
 
-    return my_status
+    payment = db.query(models.PaymentsBase).filter(models.PaymentsBase.id == payment_id).first()
+
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    payment.status = new_status
+    db.commit()
+    db.refresh(payment)
+    return payment
     
 #=====================ATTENDANCE=================================================
 

@@ -99,6 +99,7 @@ class PaymentsResponse(BaseModel):
     next_payment_date: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 class PaymentsUpdate(BaseModel):
     id: int
     status: str
