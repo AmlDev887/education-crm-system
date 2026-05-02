@@ -63,17 +63,10 @@ def login(user_in: schemas.User,db: Session = Depends(get_db)):
 @app.get("/students", response_model=List[schemas.StudentResponse])
 def get_all_students(db: Session = Depends(get_db)):
 
-    students = db.query(models.StudentsBase).options(joinedload(models.StudentsBase.courses)).all()
-    result = []
+    students = (db.query(models.StudentsBase).options(joinedload(models.StudentsBase.courses),
+                                                     joinedload(models.StudentsBase.payments)).all())
 
-    for s in students:
-        student_dict = schemas.StudentResponse.model_validate(s)
-        student_dict.course = s.courses[0].title if s.courses else "Нет курса"
-
-        result.append(student_dict)
-
-    return result
-
+    return  students
 @app.post("/students", response_model=schemas.StudentResponse)
 def add_student(student_in: schemas.StudentCreate, db: Session = Depends(get_db)):
     # 1. Создаем объект студента из данных формы
@@ -123,9 +116,6 @@ def student_status(st_id: int, status_update: StudentUpdate, db: Session = Depen
     db.commit()
     db.refresh(my_status)
     return my_status
-
-
-
 
 @app.delete("/students/{student_id}")
 def delete_student(student_id: int, db: Session = Depends(get_db)):

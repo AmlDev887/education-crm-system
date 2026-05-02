@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, computed_field
 from typing import Optional
 
 class User(BaseModel):
@@ -29,7 +29,7 @@ class StudentUpdate(BaseModel):
     status:Optional[str] = None
     course: Optional[str] = None
     is_active: Optional[bool] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -47,6 +47,19 @@ class StudentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @computed_field
+    @property
+    def course(self) -> str:
+        if hasattr(self,'courses') and self.courses:
+            return self.courses[0].title
+        return "Нет курсов"
+    @computed_field
+    @property
+    def status(self)-> str:
+        if hasattr(self,'payments') and any(p.status == "опалчено" for  p in self.payments):
+            return "Оплачено"
+        return "не оплачено"
 
 
 # ======================= Courses ============================

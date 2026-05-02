@@ -25,7 +25,6 @@ class StudentsBase(Base):
     date_rage: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow) # Исправил опечатку date_rage
     last_payment_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True) # Используем bool
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
     phone: Mapped[str] = mapped_column(String(30), nullable=False)
 
     courses = relationship("CoursesBase",secondary=student_course,back_populates="students")
