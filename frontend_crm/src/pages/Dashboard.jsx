@@ -38,7 +38,7 @@ const CustomTooltip = ({ active, payload, label }) => {
       <div className="font-mono text-txt-muted mb-1">{label}</div>
       {payload.map(p => (
         <div key={p.dataKey} style={{ color: p.color }} className="font-mono">
-          {p.name}: {p.dataKey === 'revenue' ? fmtUZS(p.value) + ' м' : p.value}
+          {p.name}: {p.dataKey === 'revenue' ? fmtUZS(p.value) + ' сум' : p.value}
         </div>
       ))}
     </div>
@@ -250,7 +250,7 @@ export default function Dashboard() {
         />
         <StatCard
           label="Общая выручка"
-          value={fmtUZS(stats.totalRevenue) + ' тыс'}
+          value={fmtUZS(stats.totalRevenue) + ' сум'}
           icon={DollarSign}
           accent="#10b981"
           sub={`${stats.paidCount} оплаченных платежей`}
