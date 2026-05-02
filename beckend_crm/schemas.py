@@ -1,24 +1,14 @@
-from datetime import datetime,date
-from email.mime import base
-
-from pydantic import BaseModel,Field, field_validator,EmailStr,ConfigDict
+from datetime import datetime, date
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional
 
+
 class User(BaseModel):
-    username: str= Field(...,min_length=2,max_length=100)
-    password: str= Field(...,min_length=2,max_length=21)
-#=========================Student==============================
-class StudentSearch(BaseModel):
-    query: str = ""
+    username: str = Field(..., min_length=2, max_length=100)
+    password: str = Field(..., min_length=2, max_length=21)
 
-    @field_validator("query")
-    @classmethod
-    def clean_query(cls,v):
-        if isinstance(v,str):
-            return  v.strip()
-        return v
 
-# schemas.py
+# ========================= Student ==============================
 
 class StudentCreate(BaseModel):
     fullname: str
@@ -32,6 +22,7 @@ class StudentCreate(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class StudentResponse(BaseModel):
     id: int
@@ -47,7 +38,9 @@ class StudentResponse(BaseModel):
 
     class Config:
         from_attributes = True
-#=======================Courses============================
+
+
+# ======================= Courses ============================
 
 class CoursesResponse(BaseModel):
     id: int
@@ -55,13 +48,14 @@ class CoursesResponse(BaseModel):
     description: str
     price: float | None
     duration: int | None
-
     students: list[StudentResponse] = []
 
     class Config:
         from_attributes = True
 
-#=====================Attendance===========================
+
+# ===================== Attendance ===========================
+
 class AttendanceResponse(BaseModel):
     id: int
     student_id: int
@@ -73,13 +67,15 @@ class AttendanceResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class AttendanceCreate(BaseModel):
     student_id: int
     course_id: int
     status: str
-    date: date  # Или str, если не используешь тип date
+    date: date
 
-model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True)
+
 
 class AttendanceUpdate(BaseModel):
     id: int
@@ -88,31 +84,25 @@ class AttendanceUpdate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-#=====================Payments=====================
+# ===================== Payments =====================
+
 class PaymentsResponse(BaseModel):
+    # ✅ ИСПРАВЛЕНО: добавлен id — без него toggleStatus(p.id) передаёт undefined
+    id: int
+
     student_name: str | None = None
     course_title: str | None = None
     amount: int
     payment_date: datetime
     method: str
     status: str
-    next_payment_date: datetime
+    next_payment_date: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class PaymentsUpdate(BaseModel):
     id: int
     status: str
 
     model_config = ConfigDict(from_attributes=True)
-
-
-
-
-
-
-
-
-
-
-
