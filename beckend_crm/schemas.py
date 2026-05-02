@@ -22,6 +22,16 @@ class StudentCreate(BaseModel):
     class Config:
         from_attributes = True
 
+class StudentUpdate(BaseModel):
+    id:Optional[int] = None
+    age:Optional[int] = None
+    phone:Optional[str] = None
+    status:Optional[str] = None
+    course: Optional[str] = None
+    is_active: Optional[bool] = None
+    
+    class Config:
+        from_attributes = True
 
 class StudentResponse(BaseModel):
     id: int

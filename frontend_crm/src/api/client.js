@@ -59,19 +59,14 @@ export const api = {
 
   // PUT /students/{id} — не реализован в бэкенде.
   // Оставлен чтобы не ломать Students.jsx — вернёт ошибку от сервера.
+// Изменяем на PATCH, чтобы задействовать твою логику на бэкенде
   async updateStudent(id, data) {
     const response = await fetch(`${BASE_URL}/students/${id}`, {
-      method: 'PUT',
+      method: 'PATCH', // Важно: меняем PUT на PATCH
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fullname: data.fullname,
-        email: data.email,
-        phone: data.phone,
-        age: Number(data.age),
-        status: data.status,
-        is_active: data.is_active,
-        date_rage: data.date_rage,
-      }),
+      // Отправляем объект data целиком.
+      // Если в нем только { status: 'paid' }, прилетит только статус.
+      body: JSON.stringify(data),
     })
     return handleResponse(response)
   },

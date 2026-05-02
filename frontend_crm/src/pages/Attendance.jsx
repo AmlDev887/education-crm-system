@@ -369,12 +369,19 @@ const handleSaveAll = async () => {
         <select
           value={courseFilter}
           onChange={e => setCourseFilter(e.target.value)}
-          className="input-field w-auto bg-slate-900 border-white/10 text-white text-sm font-semibold"
+          className="input-field w-auto bg-slate-900 border-white/10 text-white text-sm font-semibold outline-none focus:border-primary/50"
         >
-          <option value="all">Все курсы</option>
-          {courseTitles.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          <option value="all" className="bg-slate-900 text-white">Все курсы</option>
+          {courseTitles.map(c => (
+            <option 
+              key={c.value}
+              value={c.value}
+              className="bg-slate-900 text-white" // Фикс для выпадающего списка
+            >
+              {c.label}
+            </option>
+          ))}
         </select>
-
         <FilterTabs
           value={filter}
           onChange={setFilter}

@@ -554,20 +554,28 @@ export default function Students() {
         <select
           value={courseFilter}
           onChange={e => setCourseFilter(e.target.value)}
-          className="input-field w-auto bg-slate-900 border-white/10 text-white text-sm font-semibold"
+          className="input-field w-auto bg-slate-900 border-white/10 text-white text-sm font-semibold cursor-pointer outline-none focus:border-primary/50"
         >
-          <option value="all">Все курсы</option>
-          {courseTitles.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          <option value="all" className="bg-slate-900 text-white">Все курсы</option>
+          {courseTitles.map(c => (
+            <option
+              key={c.value}
+              value={c.value}
+              className="bg-slate-900 text-white" // Явно задаем фон для выпадающего списка
+            >
+              {c.label}
+            </option>
+          ))}
         </select>
 
         <select
           value={activeFilter}
           onChange={e => setActiveFilter(e.target.value)}
-          className="input-field w-auto bg-slate-900 border-white/10 text-white text-sm font-semibold"
+          className="input-field w-auto bg-slate-900 border-white/10 text-white text-sm font-semibold cursor-pointer outline-none focus:border-primary/50"
         >
-          <option value="all">Все статусы</option>
-          <option value="active">Активные</option>
-          <option value="inactive">Неактивные</option>
+          <option value="all" className="bg-slate-900 text-white">Все статусы</option>
+          <option value="active" className="bg-slate-900 text-white">Активные</option>
+          <option value="inactive" className="bg-slate-900 text-white">Неактивные</option>
         </select>
 
         {hasFilters && (

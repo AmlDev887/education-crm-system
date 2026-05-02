@@ -7,7 +7,8 @@ from typing import List
 
 import models
 import schemas
-from EduCRM.beckend_crm.schemas import AttendanceUpdate, PaymentsResponse, PaymentsUpdate
+from EduCRM.beckend_crm.schemas import AttendanceUpdate, PaymentsResponse, PaymentsUpdate, StudentResponse, \
+    StudentUpdate
 from database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
@@ -101,6 +102,29 @@ def add_student(student_in: schemas.StudentCreate, db: Session = Depends(get_db)
     response = schemas.StudentResponse.from_orm(new_student)
     response.course = db_course.title
     return response
+
+@app.patch("/students/{st_id}",response_model=StudentResponse)
+def student_status(st_id: int, status_update: StudentUpdate, db: Session = Depends(get_db)):
+
+    my_status = db.query(models.StudentsBase).filter(models.StudentsBase.id == st_id).first()
+
+    if not my_status:
+        raise HTTPException(
+            status_code=404,
+            detail="Студент не найден"
+        )
+
+    update_st = status_update.model_dump(exclude_unset=True)
+
+    for field,value in update_st.items():
+        if field != "id":
+            setattr(my_status,field,value)
+
+    db.commit()
+    db.refresh(my_status)
+    return my_status
+
+
 
 
 @app.delete("/students/{student_id}")
