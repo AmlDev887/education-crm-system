@@ -154,7 +154,35 @@
   .input-field:hover:not(:focus) {
     border-color: rgba(255,255,255,0.12);
   }
+  .img-blurred {
+    filter: blur(2px);
+    transition: filter 0.3s ease, transform 0.3s ease;
+    /* Чтобы края не были рваными при размытии, чуть увеличиваем */
+    transform: scale(1.05);
+  }
 
+  .img-blurred:hover {
+    filter: blur(0px);
+    transform: scale(1);
+  }
+
+  /* Эффект фонового свечения (часто используется за карточками) */
+  .blur-glow {
+    position: absolute;
+    z-index: -1;
+    filter: blur(60px);
+    background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  /* Контейнер с эффектом матового стекла поверх размытия */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
   /* ── Labels ── */
   .label {
     display: block;
