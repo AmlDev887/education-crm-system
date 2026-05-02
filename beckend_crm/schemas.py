@@ -86,7 +86,7 @@ class AttendanceUpdate(BaseModel):
 # ===================== Payments =====================
 
 class PaymentsResponse(BaseModel):
-    # ✅ ИСПРАВЛЕНО: добавлен id — без него toggleStatus(p.id) передаёт undefined
+
     id: int
 
     student_name: str | None = None
