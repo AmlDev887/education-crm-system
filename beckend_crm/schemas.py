@@ -2,7 +2,6 @@ from datetime import datetime, date
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional
 
-
 class User(BaseModel):
     username: str = Field(..., min_length=2, max_length=100)
     password: str = Field(..., min_length=2, max_length=21)
