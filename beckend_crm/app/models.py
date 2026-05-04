@@ -1,6 +1,6 @@
 from sqlalchemy import String, DateTime, Integer, ForeignKey,Float, Boolean,Table,Column,Date,func
 from sqlalchemy.orm import Mapped, mapped_column, relationship,validates
-from database import Base
+from EduCRM.beckend_crm.app.database import Base
 from datetime import datetime,date,timedelta
 
 class UserBase(Base):

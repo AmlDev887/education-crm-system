@@ -15,7 +15,6 @@ class StudentCreate(BaseModel):
     phone: str
     age: int
     course: str
-    status: str
     is_active: bool
     date_rage: datetime
 
@@ -26,7 +25,6 @@ class StudentUpdate(BaseModel):
     id:Optional[int] = None
     age:Optional[int] = None
     phone:Optional[str] = None
-    status:Optional[str] = None
     course: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -39,27 +37,30 @@ class StudentResponse(BaseModel):
     email: str
     phone: str
     age: int
-    status: str
     is_active: bool
     date_rage: datetime
     last_payment_date: datetime
-    course: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @computed_field
     @property
     def course(self) -> str:
-        if hasattr(self,'courses') and self.courses:
-            return self.courses[0].title
-        return "Нет курсов"
+        # Добавим принудительную отладку
+        courses = getattr(self, 'courses', [])
+        print(f"DEBUG: Студент {self.fullname}, курсов найдено: {len(courses)}")
+        if courses:
+            return courses[0].title
+        return "Пусто в БД"
+
     @computed_field
     @property
-    def status(self)-> str:
-        if hasattr(self,'payments') and any(p.status == "опалчено" for  p in self.payments):
-            return "Оплачено"
-        return "не оплачено"
+    def status(self) -> str:
+        payments = getattr(self, 'payments', [])
+        print(f"DEBUG: Платежей найдено: {len(payments)}")
+        if payments:
+            return "Оплачено" if any(p.status == "paid" for p in payments) else "Не оплачено"
+        return "Нет записей"
 
 
 # ======================= Courses ============================
