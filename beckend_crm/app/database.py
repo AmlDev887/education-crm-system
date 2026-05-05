@@ -6,9 +6,11 @@ DATABASE_URL = "postgresql://postgres:amalbek2004@localhost:5432/educrm_db"
 engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 # Общий базовый класс, который мы будем импортировать в модели
 class Base(DeclarativeBase):
     pass
+
 
 def get_db():
     db = SessionLocal()
@@ -19,4 +21,3 @@ def get_db():
 
 
 
-    
