@@ -1,11 +1,44 @@
 from datetime import datetime, date
 from pydantic import BaseModel, Field, field_validator, ConfigDict, computed_field
-from typing import Optional
+from typing import Optional,List
 
 class User(BaseModel):
     username: str = Field(..., min_length=2, max_length=100)
     password: str = Field(..., min_length=2, max_length=21)
+# ===================== Payments =====================
 
+class PaymentsResponse(BaseModel):
+
+    id: int
+
+    student_name: str | None = None
+    course_title: str | None = None
+    amount: int
+    payment_date: datetime
+    method: str
+    status: str
+    next_payment_date: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentsUpdate(BaseModel):
+    id: int
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
+# ======================= Courses ============================
+
+class CoursesResponse(BaseModel):
+    id: int
+    title: str
+    description: str
+    price: float | None
+    duration: int | None
+    students: list[StudentCreate] = []
+
+    class Config:
+        from_attributes = True
 
 # ========================= Student ==============================
 
@@ -41,6 +74,9 @@ class StudentResponse(BaseModel):
     date_rage: datetime
     last_payment_date: datetime
 
+    courses: List[CoursesResponse] = []
+    payments: List[PaymentsResponse] = []
+
     model_config = ConfigDict(from_attributes=True)
 
     @computed_field
@@ -61,21 +97,6 @@ class StudentResponse(BaseModel):
         if payments:
             return "Оплачено" if any(p.status == "paid" for p in payments) else "Не оплачено"
         return "Нет записей"
-
-
-# ======================= Courses ============================
-
-class CoursesResponse(BaseModel):
-    id: int
-    title: str
-    description: str
-    price: float | None
-    duration: int | None
-    students: list[StudentResponse] = []
-
-    class Config:
-        from_attributes = True
-
 
 # ===================== Attendance ===========================
 
@@ -107,25 +128,3 @@ class AttendanceUpdate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ===================== Payments =====================
-
-class PaymentsResponse(BaseModel):
-
-    id: int
-
-    student_name: str | None = None
-    course_title: str | None = None
-    amount: int
-    payment_date: datetime
-    method: str
-    status: str
-    next_payment_date: datetime | None = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class PaymentsUpdate(BaseModel):
-    id: int
-    status: str
-
-    model_config = ConfigDict(from_attributes=True)
