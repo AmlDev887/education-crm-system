@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 # Переходим на абсолютные импорты, чтобы PyCharm перестал "гореть"
-from app import models, schemas, security
-from app.database import get_db
+import security
+import schemas
+import models
+from database import get_db
 
 router = APIRouter()
 

@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import students, auth, courses, payments, attendance
-from app.database import engine
-from app import models
+from database import engine
+import models
 import uvicorn
 
 # Создаем таблицы
@@ -30,5 +30,4 @@ def get_stats():
     return {"totalStudents": 0, "activeCourses": 0, "totalRevenue": 0, "attendanceRate": 0}
 
 if __name__ == "__main__":
-    # Запуск через строку "app.main:app" важен для корректной работы reload
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

@@ -1,6 +1,6 @@
 from sqlalchemy import String, DateTime, Integer, ForeignKey,Float, Boolean,Table,Column,Date,func
 from sqlalchemy.orm import Mapped, mapped_column, relationship,validates
-from .database import Base
+from database import Base
 from datetime import datetime,date,timedelta
 
 class UserBase(Base):
@@ -69,7 +69,7 @@ class PaymentsBase(Base):
     payment_date: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     method: Mapped[str] = mapped_column(String(60), nullable=False, default="card")
     status: Mapped[str] = mapped_column(String(60), nullable=False, default="paid")
-    next_payment_date: Mapped[date] = mapped_column(DateTime, nullable=True)
+    next_payment_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
     @validates("payment_date")
     def new_date(self,key,value):

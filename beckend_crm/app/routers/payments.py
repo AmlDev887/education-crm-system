@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 # Переходим на абсолютные импорты
-from app import models, schemas
-from app.database import get_db
+import schemas
+import models
+from database import get_db
 
 router = APIRouter()
 
