@@ -9,6 +9,7 @@ class User(BaseModel):
 
 class PaymentsResponse(BaseModel):
 
+
     id: int
 
     student_name: str | None = None
