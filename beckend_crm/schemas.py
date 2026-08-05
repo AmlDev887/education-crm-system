@@ -5,6 +5,7 @@ from typing import Optional,List
 class User(BaseModel):
     username: str = Field(..., min_length=2, max_length=100)
     password: str = Field(..., min_length=2, max_length=21)
+    role: str = Field(...,min_length=2,max_length=21)
 # ===================== Payments =====================
 
 class PaymentsResponse(BaseModel):
@@ -36,7 +37,7 @@ class CoursesResponse(BaseModel):
     description: str
     price: float | None
     duration: int | None
-    students: list[StudentCreate] = []
+    students: list[StudentShortResponse] = []
 
     class Config:
         from_attributes = True

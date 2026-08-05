@@ -25,7 +25,7 @@ def register_user(user_in: schemas.User, db: Session = Depends(get_db)):
     new_user = models.UserBase(
         username=user_in.username,
         hashed_password=hashed_pwd,
-        role="student"  # Роль по умолчанию
+        role=user_in.role  # Роль по умолчанию
     )
 
     db.add(new_user)
