@@ -1,18 +1,16 @@
 from datetime import datetime, date
-from pydantic import BaseModel, Field, field_validator, ConfigDict, computed_field
-from typing import Optional,List
+from typing import Optional, List
+from pydantic import BaseModel, Field, ConfigDict, computed_field
 
 class User(BaseModel):
     username: str = Field(..., min_length=2, max_length=100)
     password: str = Field(..., min_length=2, max_length=21)
-    role: str = Field(...,min_length=2,max_length=21)
+    role: str | None = None
+
 # ===================== Payments =====================
 
 class PaymentsResponse(BaseModel):
-
-
     id: int
-
     student_name: str | None = None
     course_title: str | None = None
     amount: int
@@ -29,18 +27,30 @@ class PaymentsUpdate(BaseModel):
     status: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ===================== Short Models =====================
+
+class StudentShortResponse(BaseModel):
+    id: int
+    fullname: str
+    email: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ======================= Courses ============================
 
 class CoursesResponse(BaseModel):
     id: int
     title: str
     description: str
-    price: float | None
-    duration: int | None
+    price: float | None = None
+    duration: int | None = None
     students: list[StudentShortResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 # ========================= Student ==============================
 
@@ -50,21 +60,21 @@ class StudentCreate(BaseModel):
     phone: str
     age: int
     course: str
-    is_active: bool
-    date_rage: datetime
+    is_active: bool = True
+    registration_date: Optional[datetime] = None 
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class StudentUpdate(BaseModel):
-    id:Optional[int] = None
-    age:Optional[int] = None
-    phone:Optional[str] = None
+    id: Optional[int] = None
+    age: Optional[int] = None
+    phone: Optional[str] = None
     course: Optional[str] = None
     is_active: Optional[bool] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class StudentResponse(BaseModel):
     id: int
@@ -73,7 +83,7 @@ class StudentResponse(BaseModel):
     phone: str
     age: int
     is_active: bool
-    date_rage: datetime
+    registration_date: datetime  # 👈 Исправлено с date_rage на registration_date
     last_payment_date: datetime
 
     courses: List[CoursesResponse] = []
@@ -84,7 +94,6 @@ class StudentResponse(BaseModel):
     @computed_field
     @property
     def course(self) -> str:
-        # Добавим принудительную отладку
         courses = getattr(self, 'courses', [])
         print(f"DEBUG: Студент {self.fullname}, курсов найдено: {len(courses)}")
         if courses:
@@ -99,6 +108,7 @@ class StudentResponse(BaseModel):
         if payments:
             return "Оплачено" if any(p.status == "paid" for p in payments) else "Не оплачено"
         return "Нет записей"
+
 
 # ===================== Attendance ===========================
 
@@ -130,3 +140,6 @@ class AttendanceUpdate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# Принудительно связываем ссылки в конце файла
+CoursesResponse.model_rebuild()
+StudentResponse.model_rebuild()

@@ -16,19 +16,23 @@ student_course = Table(
     Column('course_id',ForeignKey('courses.id'),primary_key=True)
 )
 
+
 class StudentsBase(Base):
     __tablename__ = "students"
     id: Mapped[int] = mapped_column(primary_key=True)
     fullname: Mapped[str] = mapped_column(String(60), nullable=False)
     email: Mapped[str] = mapped_column(String(100), unique=True)
     age: Mapped[int] = mapped_column(Integer, nullable=False)
-    date_rage: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow) # Исправил опечатку date_rage
+
+    # ⬇️ Переименовываем date_rage на registration_date
+    registration_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
     last_payment_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True) # Используем bool
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     phone: Mapped[str] = mapped_column(String(30), nullable=False)
 
-    courses = relationship("CoursesBase",secondary=student_course,back_populates="students")
-    payments = relationship("PaymentsBase",back_populates='student')
+    courses = relationship("CoursesBase", secondary=student_course, back_populates="students")
+    payments = relationship("PaymentsBase", back_populates='student')
 
 class CoursesBase(Base):
     __tablename__ = "courses"

@@ -42,7 +42,8 @@ def login(user_in: schemas.User, db: Session = Depends(get_db)):
     if not user or not security.verify_password(user_in.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неправильный логин или пароль"
+            detail="Неправильный логин или пароль",
+            headers={"WWW-Authenticate": "Bearer"}
         )
 
     return {
