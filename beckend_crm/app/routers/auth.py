@@ -8,7 +8,6 @@ from database import get_db
 
 router = APIRouter()
 
-
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register_user(user_in: schemas.User, db: Session = Depends(get_db)):
     # Проверка существования пользователя

@@ -83,8 +83,9 @@ class StudentResponse(BaseModel):
     phone: str
     age: int
     is_active: bool
-    registration_date: datetime  # 👈 Исправлено с date_rage на registration_date
-    last_payment_date: datetime
+    # 1. Делаем даты необязательными на случай NULL в базе данных
+    registration_date: Optional[datetime] = None
+    last_payment_date: Optional[datetime] = None
 
     courses: List[CoursesResponse] = []
     payments: List[PaymentsResponse] = []
@@ -94,19 +95,17 @@ class StudentResponse(BaseModel):
     @computed_field
     @property
     def course(self) -> str:
-        courses = getattr(self, 'courses', [])
-        print(f"DEBUG: Студент {self.fullname}, курсов найдено: {len(courses)}")
-        if courses:
-            return courses[0].title
+        # Прямое обращение к полю Pydantic
+        if self.courses:
+            return self.courses[0].title
         return "Пусто в БД"
 
     @computed_field
     @property
     def status(self) -> str:
-        payments = getattr(self, 'payments', [])
-        print(f"DEBUG: Платежей найдено: {len(payments)}")
-        if payments:
-            return "Оплачено" if any(p.status == "paid" for p in payments) else "Не оплачено"
+        # Прямое обращение к полю Pydantic
+        if self.payments:
+            return "Оплачено" if any(p.status == "paid" for p in self.payments) else "Не оплачено"
         return "Нет записей"
 
 
