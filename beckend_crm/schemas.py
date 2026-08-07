@@ -7,38 +7,42 @@ class User(BaseModel):
     password: str = Field(..., min_length=2, max_length=21)
     role: str | None = None
 
-# ===================== Payments =====================
+
+# ===================== Short Models =====================
+class StudentShortResponse(BaseModel):
+    id: int
+    fullname: str
+    email: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CourseOnlyResponse(BaseModel):
+    id: int
+    title: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ===================== 2. Основные модели =====================
 
 class PaymentsResponse(BaseModel):
     id: int
-    student_name: str | None = None
-    course_title: str | None = None
+    student: Optional[StudentShortResponse] = None
+    course: Optional[CourseOnlyResponse] = None
     amount: int
     payment_date: datetime
     method: str
     status: str
-    next_payment_date: datetime | None = None
+    next_payment_date: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
-
 
 class PaymentsUpdate(BaseModel):
     id: int
     status: str
 
     model_config = ConfigDict(from_attributes=True)
-
-
-# ===================== Short Models =====================
-
-class StudentShortResponse(BaseModel):
-    id: int
-    fullname: str
-    email: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 # ======================= Courses ============================
 
 class CoursesResponse(BaseModel):
@@ -50,7 +54,6 @@ class CoursesResponse(BaseModel):
     students: list[StudentShortResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
-
 
 # ========================= Student ==============================
 

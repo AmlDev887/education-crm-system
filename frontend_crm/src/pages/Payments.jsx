@@ -13,17 +13,28 @@ const METHOD_ICON  = { card: CreditCard, cash: Banknote, transfer: ArrowLeftRigh
 const METHOD_LABEL = { card: 'Карта', cash: 'Наличные', transfer: 'Перевод' }
 const STATUS_LABEL = { paid: 'Оплачено', pending: 'В ожидании', overdue: 'Просрочено' }
 
-// ─── Хелперы ──────────────────────────────────────────────────────────────────
+// ─── Безопасные хелперы для новых Pydantic-схем ─────────────────────────────
 
-const getField = (obj, ...keys) => {
-  for (const k of keys) if (obj[k] != null && obj[k] !== '') return obj[k]
-  return '—'
+// Вытаскиваем имя студента (поддерживает и объект p.student, и старые плоские поля)
+const getStudentName = (p) => {
+  if (!p) return '—'
+  if (typeof p.student === 'object' && p.student?.fullname) return p.student.fullname
+  if (typeof p.student === 'string') return p.student
+  return p.studentName || p.student_name || p.fullname || '—'
+}
+
+// Вытаскиваем название курса (поддерживает и объект p.course, и старые плоские поля)
+const getCourseTitle = (p) => {
+  if (!p) return '—'
+  if (typeof p.course === 'object' && p.course?.title) return p.course.title
+  if (typeof p.course === 'string') return p.course
+  return p.course_title || p.courseName || '—'
 }
 
 const fmtDate = (val) => {
   if (!val) return '—'
   const d = new Date(val)
-  return isNaN(d) ? val : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return isNaN(d) ? String(val) : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 // ─── Инфо-баннер ──────────────────────────────────────────────────────────────
@@ -34,6 +45,9 @@ function BackendNotice() {
   return (
     <div className="mb-5 flex items-start gap-3 px-4 py-3 rounded-lg bg-accent/5 border border-accent/20 relative">
       <Info size={14} className="text-accent mt-0.5 flex-shrink-0" />
+      <div className="text-xs text-txt-muted pr-6">
+        Финансовый модуль работает с обновлёнными Pydantic-схемами бэкенда.
+      </div>
       <button
         onClick={() => setVisible(false)}
         className="absolute top-2 right-2 text-txt-muted hover:text-txt transition-colors"
@@ -131,17 +145,19 @@ export default function Payments() {
 
   // ── фильтрация + сортировка ──
   const filtered = useMemo(() => {
-    const q    = search.toLowerCase()
+    const q    = search.toLowerCase().trim()
     const from = dateFrom ? new Date(dateFrom) : null
     const to   = dateTo   ? new Date(dateTo + 'T23:59:59') : null
 
     return [...payments]
       .filter(p => {
-        const name   = getField(p, 'studentName', 'fullname', 'student_name').toLowerCase()
-        const course = getField(p, 'course', 'course_title').toLowerCase()
+        const name   = getStudentName(p).toLowerCase()
+        const course = getCourseTitle(p).toLowerCase()
+
         const matchQ = !q || name.includes(q) || course.includes(q)
         const matchS = statusFilter === 'all' || p.status === statusFilter
         const matchM = methodFilter === 'all' || p.method === methodFilter
+
         let matchD = true
         if (p.payment_date) {
           const d = new Date(p.payment_date)
@@ -151,9 +167,20 @@ export default function Payments() {
         return matchQ && matchS && matchM && matchD
       })
       .sort((a, b) => {
-        let av = a[sort.field], bv = b[sort.field]
-        if (sort.field === 'payment_date') { av = new Date(av || 0); bv = new Date(bv || 0) }
-        if (sort.field === 'amount')       { av = +(av || 0);        bv = +(bv || 0) }
+        let av = a[sort.field]
+        let bv = b[sort.field]
+
+        if (sort.field === 'studentName') {
+          av = getStudentName(a)
+          bv = getStudentName(b)
+        } else if (sort.field === 'payment_date') {
+          av = new Date(av || 0)
+          bv = new Date(bv || 0)
+        } else if (sort.field === 'amount') {
+          av = +(av || 0)
+          bv = +(bv || 0)
+        }
+
         if (av < bv) return sort.dir === 'asc' ? -1 : 1
         if (av > bv) return sort.dir === 'asc' ?  1 : -1
         return 0
@@ -393,14 +420,14 @@ export default function Payments() {
               <tbody>
                   {filtered.map((p, i) => {
                     const MethodIcon  = METHOD_ICON[p.method] || CreditCard
-                    const studentName = getField(p, 'studentName', 'fullname', 'student_name')
-                    const courseName  = getField(p, 'course', 'course_title')
+                    const studentName = getStudentName(p)
+                    const courseName  = getCourseTitle(p)
                     const dateStr     = fmtDate(p.payment_date)
                     const nextDateStr = fmtDate(p.next_payment_date)
 
                     return (
                       <tr key={p.id ?? i} className="hover:bg-bg-3 transition-colors border-t border-border/40">
-                        <td className="td text-xs text-txt-muted font-mono">{p.id}</td>
+                        <td className="td text-xs text-txt-muted font-mono">{i + 1}</td>
 
                         <td className="td">
                           <div className="font-medium text-sm leading-tight">{studentName}</div>

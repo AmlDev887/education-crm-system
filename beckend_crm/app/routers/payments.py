@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, selectinload
 from typing import List
 # Переходим на абсолютные импорты
 import schemas
@@ -15,8 +15,8 @@ def get_payments(db: Session = Depends(get_db)):
     Получение всех платежей с подгрузкой данных о студенте и курсе.
     """
     return db.query(models.PaymentsBase).options(
-        joinedload(models.PaymentsBase.student),
-        joinedload(models.PaymentsBase.course)
+        selectinload(models.PaymentsBase.student),
+        selectinload(models.PaymentsBase.course)
     ).all()
 
 
