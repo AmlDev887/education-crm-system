@@ -60,6 +60,7 @@ class StudentCreate(BaseModel):
     phone: str
     age: int
     course: str
+    status: str = "unpaid"
     is_active: bool = True
     registration_date: Optional[datetime] = None 
 
@@ -72,6 +73,8 @@ class StudentUpdate(BaseModel):
     phone: Optional[str] = None
     course: Optional[str] = None
     is_active: Optional[bool] = None
+    status: Optional[str] = None
+    payment_status: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -105,8 +108,8 @@ class StudentResponse(BaseModel):
     def status(self) -> str:
         # Прямое обращение к полю Pydantic
         if self.payments:
-            return "Оплачено" if any(p.status == "paid" for p in self.payments) else "Не оплачено"
-        return "Нет записей"
+            return "paid" if any(p.status == "paid" for p in self.payments) else "unpaid"
+        return "unpaid"
 
 
 # ===================== Attendance ===========================

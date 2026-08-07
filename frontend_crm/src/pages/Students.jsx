@@ -27,6 +27,17 @@ const EMPTY_FORM = {
 
 const STATUS_LABELS = { paid: 'Оплачено', unpaid: 'Не оплачено' }
 
+// Вспомогательная функция для безопасного чтения статуса
+function getStudentStatus(student) {
+  if (!student) return 'unpaid'
+  if (student.status) return student.status
+  if (student.payment_status) return student.payment_status
+  if (Array.isArray(student.payments) && student.payments.length > 0) {
+    return student.payments[0].status || 'unpaid'
+  }
+  return 'unpaid'
+}
+
 // ─── Валидация ────────────────────────────────────────────────────────────────
 function validate(form) {
   const e = {}
@@ -41,14 +52,14 @@ function validate(form) {
 function StudentModal({ student, onClose, onSave, courseTitles }) {
   const isEdit = !!student
   const [form, setForm] = useState(() => student ? {
-    name:     student.fullname || student.name || '',
-    email:    student.email    || '',
-    phone:    student.phone    || '',
-    age:      student.age      || 18,
-    course:   student.course   || '',
-    status:   student.status   || 'unpaid',
+    name:      student.fullname || student.name || '',
+    email:     student.email    || '',
+    phone:     student.phone    || '',
+    age:       student.age      || 18,
+    course:    student.course   || (student.courses?.[0]?.title || ''),
+    status:    getStudentStatus(student), // 👈 Заменили чтение статуса
     is_active: student.is_active ?? true,
-    enrolled: student.date_rage
+    enrolled:  student.date_rage
       ? student.date_rage.split('T')[0]
       : new Date().toISOString().slice(0, 10),
   } : { ...EMPTY_FORM })
@@ -69,17 +80,18 @@ function StudentModal({ student, onClose, onSave, courseTitles }) {
     const errs = validate(form)
     if (Object.keys(errs).length) { setErrors(errs); return }
     setSaving(true)
-    const payload = {
-      fullname:           form.name.trim(),
-      email:              form.email.trim(),
-      phone:              form.phone  || '',
-      age:                parseInt(form.age, 10),
-      course:             form.course,
-      status:             form.status,
-      is_active:          form.is_active,
-      last_payment_date:  new Date().toISOString(),
-      date_rage:          new Date(form.enrolled).toISOString(),
-    }
+      const payload = {
+            fullname:           form.name.trim(),
+            email:              form.email.trim(),
+            phone:              form.phone  || '',
+            age:                parseInt(form.age, 10),
+            course:             form.course,
+            status:             form.status,
+            payment_status:     form.status, // 👈 Добавили продублированный ключ
+            is_active:          form.is_active,
+            last_payment_date:  new Date().toISOString(),
+            date_rage:          new Date(form.enrolled).toISOString(),
+          }
     try {
       if (isEdit) {
         await api.updateStudent(student.id, payload)
@@ -265,9 +277,12 @@ function DeleteConfirm({ student, onClose, onConfirm, loading }) {
 
 // ─── Строка таблицы ───────────────────────────────────────────────────────────
 function StudentRow({ student: s, onEdit, onDelete }) {
+  // Достаем курс и статус из пришедших данных
+  const currentCourse = s.course || (s.courses?.[0]?.title) || '—'
+  const currentStatus = getStudentStatus(s)
+
   return (
     <tr className="border-b border-white/5 hover:bg-white/[0.03] transition-colors group">
-
       {/* Студент */}
       <td className="py-3.5 pl-6">
         <div className="flex items-center gap-3">
@@ -301,7 +316,7 @@ function StudentRow({ student: s, onEdit, onDelete }) {
       {/* Курс */}
       <td className="px-4">
         <Badge variant="outline" className="text-xs border-white/15 text-white/60">
-          {s.course || '—'}
+          {currentCourse}
         </Badge>
       </td>
 
@@ -316,8 +331,8 @@ function StudentRow({ student: s, onEdit, onDelete }) {
 
       {/* Статус оплаты */}
       <td className="px-4">
-        <Badge type={s.status} className="text-xs font-semibold">
-          {STATUS_LABELS[s.status] || s.status}
+        <Badge type={currentStatus} className="text-xs font-semibold">
+          {STATUS_LABELS[currentStatus] || currentStatus}
         </Badge>
       </td>
 
@@ -385,25 +400,29 @@ export default function Students() {
   useEffect(() => { load() }, [load])
 
   // ─── Статистика ─────────────────────────────────────────────────────────────
-  const stats = useMemo(() => {
+const stats = useMemo(() => {
     const total    = students.length
-    const paid     = students.filter(s => s.status === 'paid').length
+    const paid     = students.filter(s => getStudentStatus(s) === 'paid').length
+    const unpaid   = students.filter(s => getStudentStatus(s) === 'unpaid').length
     const active   = students.filter(s => s.is_active).length
-    const unpaid   = students.filter(s => s.status === 'unpaid').length
     return { total, paid, active, unpaid }
   }, [students])
 
   // ─── Фильтрация + сортировка ────────────────────────────────────────────────
-  const filtered = useMemo(() => {
+const filtered = useMemo(() => {
     let list = students.filter(s => {
-      const q    = search.toLowerCase()
-      const name = (s.fullname || s.name || '').toLowerCase()
+      const q             = search.toLowerCase()
+      const name          = (s.fullname || s.name || '').toLowerCase()
+      const currentCourse = s.course || (s.courses?.[0]?.title) || ''
+      const currentStatus = getStudentStatus(s)
+
       const matchQ = !q || name.includes(q) || (s.email || '').toLowerCase().includes(q) || (s.phone || '').includes(q)
-      const matchF = filter       === 'all' || s.status   === filter
-      const matchC = courseFilter === 'all' || s.course   === courseFilter
+      const matchF = filter       === 'all' || currentStatus === filter
+      const matchC = courseFilter === 'all' || currentCourse  === courseFilter
       const matchA = activeFilter === 'all'
         || (activeFilter === 'active'   &&  s.is_active)
         || (activeFilter === 'inactive' && !s.is_active)
+
       return matchQ && matchF && matchC && matchA
     })
 
@@ -411,7 +430,7 @@ export default function Students() {
       let va = '', vb = ''
       if (sortKey === 'name')   { va = (a.fullname || a.name || '').toLowerCase(); vb = (b.fullname || b.name || '').toLowerCase() }
       if (sortKey === 'age')    { va = a.age || 0; vb = b.age || 0 }
-      if (sortKey === 'course') { va = a.course || ''; vb = b.course || '' }
+      if (sortKey === 'course') { va = a.course || (a.courses?.[0]?.title) || ''; vb = b.course || (b.courses?.[0]?.title) || '' }
       if (va < vb) return sortDir === 'asc' ? -1 :  1
       if (va > vb) return sortDir === 'asc' ?  1 : -1
       return 0
