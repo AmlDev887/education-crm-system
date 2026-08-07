@@ -11,6 +11,21 @@ import { api } from '@/api/client'
 import { Badge, Avatar, getCourseColor, fmtM, Spinner } from '@/components/ui'
 import { PageHeader } from '@/components/ui'
 
+// ─── Хелперы извлечения данных с бэкенда ─────────────────────────
+const getStudentName = (item) => {
+  if (!item) return '—'
+  if (typeof item.student === 'object' && item.student?.fullname) return item.student.fullname
+  if (typeof item.student === 'string') return item.student
+  return item.student_name || item.studentName || item.fullname || '—'
+}
+
+const getCourseTitle = (item) => {
+  if (!item) return '—'
+  if (typeof item.course === 'object' && item.course?.title) return item.course.title
+  if (typeof item.course === 'string') return item.course
+  return item.course_title || item.courseName || item.title || '—'
+}
+
 // ─── Хелпер форматирования суммы ──────────────────────────────────
 const fmtUZS = (v) => {
   if (!v && v !== 0) return '—'
@@ -177,12 +192,12 @@ export default function Dashboard() {
   // ─── Статистика по курсам ────────────────────────────────────
   const courseStats = useMemo(() => {
     return courses.map(c => {
-      const recs    = attendance.filter(a => a.course_id === c.id)
+      const recs    = attendance.filter(a => a.course_id === c.id || getCourseTitle(a) === c.title)
       const present = recs.filter(a => a.status === 'present').length
       const rate    = recs.length > 0 ? Math.round((present / recs.length) * 100) : 0
-      const studentCount   = students.filter(s => s.course === c.title).length
+      const studentCount   = students.filter(s => (s.course || s.course_title) === c.title).length
       const courseRevenue  = payments
-        .filter(p => p.status === 'paid' && p.course_title === c.title)
+        .filter(p => p.status === 'paid' && getCourseTitle(p) === c.title)
         .reduce((acc, p) => acc + (p.amount || 0), 0)
       return { ...c, attendanceRate: rate, studentCount, courseRevenue }
     })
@@ -357,19 +372,23 @@ export default function Dashboard() {
           <div>
             {recentStudents.length === 0 ? (
               <div className="px-5 py-8 text-xs text-txt-dim font-mono text-center">Студентов пока нет</div>
-            ) : recentStudents.map((s, i, arr) => (
-              <div
-                key={s.id}
-                className={`flex items-center gap-3 px-5 py-3 hover:bg-bg-3 transition-colors ${i < arr.length - 1 ? 'border-b border-border/60' : ''}`}
-              >
-                <Avatar name={s.fullname} color={getCourseColor?.(s.course) || '#7c3aed'} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{s.fullname}</div>
-                  <div className="text-xs text-txt-muted truncate">{s.course || 'Курс не указан'}</div>
+            ) : recentStudents.map((s, i, arr) => {
+              const studentName = getStudentName(s)
+              const courseName  = getCourseTitle(s)
+              return (
+                <div
+                  key={s.id ?? i}
+                  className={`flex items-center gap-3 px-5 py-3 hover:bg-bg-3 transition-colors ${i < arr.length - 1 ? 'border-b border-border/60' : ''}`}
+                >
+                  <Avatar name={studentName !== '—' ? studentName : '?'} color={getCourseColor?.(courseName) || '#7c3aed'} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{studentName}</div>
+                    <div className="text-xs text-txt-muted truncate">{courseName !== '—' ? courseName : 'Курс не указан'}</div>
+                  </div>
+                  <Badge type={s.status}>{STATUS_RU[s.status] || s.status}</Badge>
                 </div>
-                <Badge type={s.status}>{STATUS_RU[s.status] || s.status}</Badge>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
@@ -384,7 +403,7 @@ export default function Dashboard() {
               <div className="px-5 py-8 text-xs text-txt-dim font-mono text-center">Курсов пока нет</div>
             ) : courseStats.map((c, i, arr) => (
               <div
-                key={c.id}
+                key={c.id ?? i}
                 className={`flex items-center gap-3 px-5 py-3 hover:bg-bg-3 transition-colors ${i < arr.length - 1 ? 'border-b border-border/60' : ''}`}
               >
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: courseColor(c.id) }} />
@@ -415,27 +434,31 @@ export default function Dashboard() {
             </span>
           </div>
           <div>
-            {debtors.map((p, i, arr) => (
-              <div
-                key={p.id ?? i}
-                className={`flex items-center gap-3 px-5 py-3 hover:bg-bg-3 transition-colors ${i < arr.length - 1 ? 'border-b border-border/60' : ''}`}
-              >
-                <Avatar name={p.student_name || '?'} color="#f59e0b" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{p.student_name || '—'}</div>
-                  <div className="text-xs text-txt-muted truncate">{p.course_title || '—'}</div>
-                </div>
-                <div className="text-right mr-3">
-                  <div className="text-sm font-mono font-semibold text-warning">{fmtUZS(p.amount)} сум</div>
-                  <div className="text-[10px] text-txt-muted">
-                    {p.next_payment_date
-                      ? `срок: ${new Date(p.next_payment_date).toLocaleDateString('ru', { day: '2-digit', month: 'short' })}`
-                      : ''}
+            {debtors.map((p, i, arr) => {
+              const studentName = getStudentName(p)
+              const courseName  = getCourseTitle(p)
+              return (
+                <div
+                  key={p.id ?? i}
+                  className={`flex items-center gap-3 px-5 py-3 hover:bg-bg-3 transition-colors ${i < arr.length - 1 ? 'border-b border-border/60' : ''}`}
+                >
+                  <Avatar name={studentName !== '—' ? studentName : '?'} color="#f59e0b" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{studentName}</div>
+                    <div className="text-xs text-txt-muted truncate">{courseName}</div>
                   </div>
+                  <div className="text-right mr-3">
+                    <div className="text-sm font-mono font-semibold text-warning">{fmtUZS(p.amount)} сум</div>
+                    <div className="text-[10px] text-txt-muted">
+                      {p.next_payment_date
+                        ? `срок: ${new Date(p.next_payment_date).toLocaleDateString('ru', { day: '2-digit', month: 'short' })}`
+                        : ''}
+                    </div>
+                  </div>
+                  <Badge type="unpaid">{STATUS_RU[p.status] || p.status}</Badge>
                 </div>
-                <Badge type="unpaid">{STATUS_RU[p.status] || p.status}</Badge>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -449,28 +472,30 @@ export default function Dashboard() {
         <div>
           {recentLogs.length === 0 ? (
             <div className="px-5 py-8 text-xs text-txt-dim font-mono text-center">Записей пока нет</div>
-          ) : recentLogs.map((item, i, arr) => (
-            <div
-              key={item.id}
-              className={`flex items-center gap-3 px-5 py-3 hover:bg-bg-3 transition-colors ${i < arr.length - 1 ? 'border-b border-border/60' : ''}`}
-            >
-              <Avatar
-                name={item.student_name || item.studentName || '?'}
-                color={getCourseColor?.(item.course_title) || '#7c3aed'}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">
-                  {item.student_name || item.studentName || '—'}
+          ) : recentLogs.map((item, i, arr) => {
+            const studentName = getStudentName(item)
+            const courseName  = getCourseTitle(item)
+            return (
+              <div
+                key={item.id ?? i}
+                className={`flex items-center gap-3 px-5 py-3 hover:bg-bg-3 transition-colors ${i < arr.length - 1 ? 'border-b border-border/60' : ''}`}
+              >
+                <Avatar
+                  name={studentName !== '—' ? studentName : '?'}
+                  color={getCourseColor?.(courseName) || '#7c3aed'}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{studentName}</div>
+                  <div className="text-xs text-txt-muted truncate">
+                    {courseName} · {item.date}
+                  </div>
                 </div>
-                <div className="text-xs text-txt-muted truncate">
-                  {item.course_title || item.course || '—'} · {item.date}
-                </div>
+                <Badge type={item.status === 'present' ? 'paid' : 'unpaid'}>
+                  {STATUS_RU[item.status] || item.status}
+                </Badge>
               </div>
-              <Badge type={item.status === 'present' ? 'paid' : 'unpaid'}>
-                {STATUS_RU[item.status] || item.status}
-              </Badge>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

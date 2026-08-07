@@ -412,9 +412,14 @@ export default function Settings({ onLogout }) {
     finally { setChecking(false); if (!quiet) setLoading(false) }
   }
 
-  useEffect(() => {
-    checkConnection(form.apiUrl, true).finally(() => setLoading(false))
-  }, [])
+useEffect(() => {
+  checkConnection(form.apiUrl, true).finally(() => setLoading(false))
+  api.getSettings().then(data => {
+    if (data && Object.keys(data).length) {
+      setForm(p => ({ ...p, ...data }))
+    }
+  }).catch(() => {}) // бэкенд может быть ещё недоступен — не роняем страницу
+}, [])
 
   const handle = e => {
     const { name, value, type, checked } = e.target
@@ -636,6 +641,7 @@ export default function Settings({ onLogout }) {
       </Section>
 
       {/* ── Security ──────────────────────────────────────────────── */}
+{/* ── Security ──────────────────────────────────────────────── */}
       <Section icon={Lock} title={t.security} subtitle={t.securitySub} accent="#f59e0b">
         <div className="flex flex-col gap-4">
           {[
@@ -663,16 +669,29 @@ export default function Settings({ onLogout }) {
             <SettingInput label={t.currentPass} name="currentPassword" secret value={form.currentPassword} onChange={handle} placeholder="••••••••" />
             <SettingInput label={t.newPass} name="newPassword" secret value={form.newPassword} onChange={handle} placeholder="••••••••" />
             <div>
-              <button className="text-xs font-mono transition-colors" style={{ color: '#7c3aed' }}
+              <button
+                onClick={async () => {
+                  const user = JSON.parse(localStorage.getItem('user') || '{}')
+                  if (!user.username) return alert('Не найден текущий пользователь')
+                  if (!form.currentPassword || !form.newPassword) return alert('Заполните оба поля пароля')
+                  try {
+                    await api.updatePassword(user.username, form.currentPassword, form.newPassword)
+                    alert('Пароль обновлён')
+                    setForm(p => ({ ...p, currentPassword: '', newPassword: '' }))
+                  } catch (err) {
+                    alert('Ошибка: ' + err.message)
+                  }
+                }}
+                className="text-xs font-mono transition-colors" style={{ color: '#7c3aed' }}
                 onMouseEnter={e => e.currentTarget.style.color = '#a78bfa'}
-                onMouseLeave={e => e.currentTarget.style.color = '#7c3aed'}>
+                onMouseLeave={e => e.currentTarget.style.color = '#7c3aed'}
+              >
                 {t.updatePass}
               </button>
             </div>
           </div>
         </div>
       </Section>
-
       {/* ── Notifications ─────────────────────────────────────────── */}
       <Section icon={Bell} title={t.notifications} subtitle={t.notifSub} accent="#a78bfa">
         <div className="flex flex-col divide-y" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -743,26 +762,49 @@ export default function Settings({ onLogout }) {
           </div>
         </div>
         <div className="p-5 flex flex-col gap-3">
-          {[
-            { label: t.clearAttend, sub: t.clearAttendSub, btn: t.clear },
-            { label: t.resetSettings, sub: t.resetSettingsSub, btn: t.reset },
-          ].map(item => (
-            <div key={item.label} className="flex items-center justify-between py-1">
-              <div>
-                <div className="text-sm font-medium" style={{ color: '#eae8e3' }}>{item.label}</div>
-                <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{item.sub}</div>
-              </div>
-              <button
-                onClick={() => window.confirm(t.confirmDanger)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.25)', color: '#f87171' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(244,63,94,0.15)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(244,63,94,0.08)'}
-              >
-                {item.btn}
-              </button>
+        {[
+          {
+            label: t.clearAttend, sub: t.clearAttendSub, btn: t.clear,
+            action: async () => {
+              if (!window.confirm(t.confirmDanger)) return
+              try {
+                await api.clearAttendance()
+                alert('OK')
+              } catch (err) {
+                alert('Ошибка: ' + err.message)
+              }
+            },
+          },
+          {
+            label: t.resetSettings, sub: t.resetSettingsSub, btn: t.reset,
+            action: async () => {
+              if (!window.confirm(t.confirmDanger)) return
+              try {
+                const data = await api.resetSettings()
+                setForm(p => ({ ...p, ...data }))
+                alert('OK')
+              } catch (err) {
+                alert('Ошибка: ' + err.message)
+              }
+            },
+          },
+        ].map(item => (
+          <div key={item.label} className="flex items-center justify-between py-1">
+            <div>
+              <div className="text-sm font-medium" style={{ color: '#eae8e3' }}>{item.label}</div>
+              <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{item.sub}</div>
             </div>
-          ))}
+            <button
+              onClick={item.action}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+              style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.25)', color: '#f87171' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(244,63,94,0.15)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(244,63,94,0.08)'}
+            >
+              {item.btn}
+            </button>
+          </div>
+        ))}
         </div>
       </div>
 
