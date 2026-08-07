@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload
+from select import select
+from sqlalchemy.orm import Session, joinedload, selectinload
 from typing import List
 from datetime import datetime, timezone
 # Используем только абсолютные импорты
@@ -16,43 +17,58 @@ def get_all_students(db: Session = Depends(get_db)):
     Получение всех студентов с их курсами и историей платежей.
     """
     return db.query(models.StudentsBase).options(
-        joinedload(models.StudentsBase.courses),
-        joinedload(models.StudentsBase.payments)
+        selectinload(models.StudentsBase.courses),
+        selectinload(models.StudentsBase.payments)
     ).all()
 
 
 @router.post("/", response_model=schemas.StudentResponse)
 def add_student(student_in: schemas.StudentCreate, db: Session = Depends(get_db)):
     """
-    Регистрация нового студента и привязка его к курсу.
+    Регистрация нового студента, привязка его к курсу и создание первого платежа.
     """
-    # Проверяем, существует ли курс, прежде чем создавать студента
+    # 1. Проверяем, существует ли курс
     db_course = db.query(models.CoursesBase).filter(models.CoursesBase.title == student_in.course).first()
     if not db_course:
         raise HTTPException(status_code=404, detail=f"Курс '{student_in.course}' не найден")
 
+    # 2. Создаем объект студента
+    now = datetime.now(timezone.utc)
     new_student = models.StudentsBase(
         fullname=student_in.fullname,
         email=student_in.email,
         phone=student_in.phone,
         age=student_in.age,
         is_active=student_in.is_active,
-        # Используем исправленное имя поля из нашей новой модели
-        registration_date=datetime.now(timezone.utc),
-        last_payment_date=datetime.now(timezone.utc)
+        registration_date=now,
+        last_payment_date=now
     )
 
+    # Связываем студент-курс (Many-to-Many)
     new_student.courses.append(db_course)
 
     try:
         db.add(new_student)
-        db.commit()
-        db.refresh(new_student)
-        return new_student
-    except Exception:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Ошибка при добавлении студента")
+        db.flush()
 
+        new_payment = models.PaymentsBase(
+            student_id=new_student.id,
+            course_id=db_course.id,
+            amount=int(db_course.price),
+            payment_date=now,
+            method="cash",
+            status=student_in.status
+        )
+        db.add(new_payment)
+
+        db.commit() 
+        db.refresh(new_student)
+
+        return new_student
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка при добавлении студента: {str(e)}")
 
 @router.patch("/{st_id}", response_model=schemas.StudentResponse)
 def student_status(st_id: int, status_update: schemas.StudentUpdate, db: Session = Depends(get_db)):
