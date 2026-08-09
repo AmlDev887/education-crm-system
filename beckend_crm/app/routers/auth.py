@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 # Переходим на абсолютные импорты, чтобы PyCharm перестал "гореть"
@@ -5,6 +7,7 @@ import security
 import schemas
 import models
 from database import get_db
+
 
 router = APIRouter()
 
@@ -15,8 +18,9 @@ def register_user(user_in: schemas.User, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Такой пользователь уже зарегистрирован"
+            detail="Такой пользователь уже зарегистрирован,получите токен!"
         )
+
 
     # Хешируем пароль перед сохранением
     hashed_pwd = security.hash_password(user_in.password)
