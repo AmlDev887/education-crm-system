@@ -30,7 +30,7 @@ class StudentsBase(Base):
     last_payment_date: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # Каскадное удаление на уровне ORM
+
     courses = relationship("CoursesBase", secondary=student_course, back_populates="students")
     payments = relationship("PaymentsBase", back_populates='student', cascade="all, delete-orphan")
     attendances = relationship("AttendanceBase", back_populates='student', cascade="all, delete-orphan")
@@ -50,7 +50,6 @@ class CoursesBase(Base):
 class AttendanceBase(Base):
     __tablename__ = "attendance"
     id: Mapped[int] = mapped_column(primary_key=True)
-    # 👈 Добавили CASCADE
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"))
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
     date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)

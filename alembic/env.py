@@ -6,16 +6,13 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 
-# --- настройка путей ---
-# __file__ = EduCRM/alembic/env.py
 # parents[1] = EduCRM
 BASE_DIR = Path(__file__).resolve().parents[1]
-BACKEND_DIR = BASE_DIR / "beckend_crm"  # <-- убрали лишний EduCRM/
-
+BACKEND_DIR = BASE_DIR / "beckend_crm"
 # Добавляем beckend_crm в sys.path
 sys.path.insert(0, str(BACKEND_DIR))
 
-# Теперь импорт сработает (models.py лежит прямо в beckend_crm/)
+
 from models import Base
 
 # --- alembic config ---
