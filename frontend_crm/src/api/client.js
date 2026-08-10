@@ -5,44 +5,58 @@
 
 const BASE_URL = 'http://localhost:8000'
 
-async function handleResponse(response) {
+/**
+ * Единая обертка для всех HTTP-запросов к бэкенду.
+ * Автоматически передает Cookie (credentials: 'include') и обрабатывает ошибки.
+ */
+async function request(endpoint, options = {}) {
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+  }
+
+  const config = {
+    ...options,
+    credentials: 'include', // Передача HTTP-only Cookie на бэкенд
+    headers: {
+      ...defaultHeaders,
+      ...(options.headers || {}),
+    },
+  }
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, config)
+
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Server Error' }))
+    const error = await response.json().catch(() => ({ detail: 'Ошибка сервера' }))
     throw new Error(error.detail || 'Ошибка связи с бэкендом')
   }
+
   return response.json()
 }
 
 export const api = {
   // ─── AUTH ──────────────────────────────────────────────────────
   async login(username, password) {
-    const response = await fetch(`${BASE_URL}/login`, {
+    return request('/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     })
-    return handleResponse(response)
   },
 
   async register(username, password) {
-    const response = await fetch(`${BASE_URL}/register`, {
+    return request('/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     })
-    return handleResponse(response)
   },
 
   // ─── STUDENTS ──────────────────────────────────────────────────
   async getStudents() {
-    const response = await fetch(`${BASE_URL}/students`)
-    return handleResponse(response)
+    return request('/students')
   },
 
   async addStudent(data) {
-    const response = await fetch(`${BASE_URL}/students`, {
+    return request('/students', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fullname: data.fullname,
         email: data.email,
@@ -54,57 +68,42 @@ export const api = {
         course: data.course,
       }),
     })
-    return handleResponse(response)
   },
 
-  // PUT /students/{id} — не реализован в бэкенде.
-  // Оставлен чтобы не ломать Students.jsx — вернёт ошибку от сервера.
-// Изменяем на PATCH, чтобы задействовать твою логику на бэкенде
   async updateStudent(id, data) {
-    const response = await fetch(`${BASE_URL}/students/${id}`, {
-      method: 'PATCH', // Важно: меняем PUT на PATCH
-      headers: { 'Content-Type': 'application/json' },
-      // Отправляем объект data целиком.
-      // Если в нем только { status: 'paid' }, прилетит только статус.
+    return request(`/students/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     })
-    return handleResponse(response)
   },
 
   async deleteStudent(id) {
-    const response = await fetch(`${BASE_URL}/students/${id}`, {
+    return request(`/students/${id}`, {
       method: 'DELETE',
     })
-    return handleResponse(response)
   },
 
   // ─── COURSES ───────────────────────────────────────────────────
   async getCourses() {
-    const response = await fetch(`${BASE_URL}/courses`)
-    return handleResponse(response)
+    return request('/courses')
   },
 
-  // Алиас — на случай если где-то используется getCourse() вместо getCourses()
   async getCourse() {
-    const response = await fetch(`${BASE_URL}/courses`)
-    return handleResponse(response)
+    return request('/courses')
   },
 
   async getCourseTitles() {
-    const response = await fetch(`${BASE_URL}/courses/title`)
-    return handleResponse(response)
+    return request('/courses/title')
   },
 
   // ─── ATTENDANCE ────────────────────────────────────────────────
   async getAttendance() {
-    const response = await fetch(`${BASE_URL}/attendance`)
-    return handleResponse(response)
+    return request('/attendance')
   },
 
   async markAttendance(data) {
-    const response = await fetch(`${BASE_URL}/attendance`, {
+    return request('/attendance', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         student_id: data.student_id,
         course_id: data.course_id,
@@ -112,54 +111,39 @@ export const api = {
         date: data.date || new Date().toISOString().split('T')[0],
       }),
     })
-    return handleResponse(response)
   },
 
   // ─── PAYMENTS ──────────────────────────────────────────────────
   async getPayments() {
-    const response = await fetch(`${BASE_URL}/payments`)
-    return handleResponse(response)
+    return request('/payments')
   },
 
-  // Метод для быстрого обновления статуса платежа (PATCH)
   async updatePaymentStatus(id, newStatus) {
-    const response = await fetch(`${BASE_URL}/payments/${id}/status?new_status=${newStatus}`, {
+    return request(`/payments/${id}/status?new_status=${newStatus}`, {
       method: 'PATCH',
     })
-    return handleResponse(response)
   },
 
-  // Оставлен чтобы не ломать Payments.jsx
-  // Вернёт ошибку пока POST /payments не добавлен в бэкенд
   async addPayment(data) {
-    const response = await fetch(`${BASE_URL}/payments`, {
+    return request('/payments', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         student_id: data.student_id,
         course_id: data.course_id,
         amount: Number(data.amount),
       }),
     })
-    return handleResponse(response)
   },
 
   // ─── STATS ─────────────────────────────────────────────────────
-  // Бэкенд возвращает заглушку с нулями.
-  // Reports.jsx агрегирует данные сам из /students + /courses + /attendance
   async getStats() {
-    const response = await fetch(`${BASE_URL}/stats`)
-    return handleResponse(response)
+    return request('/stats')
   },
 
   // ─── SETTINGS ──────────────────────────────────────────────────
-  // GET/POST /settings не реализованы в бэкенде.
-  // Settings.jsx работает с локальными дефолтами — эти методы не падают.
   async getSettings() {
     try {
-      const response = await fetch(`${BASE_URL}/settings`)
-      if (!response.ok) return {}
-      return response.json()
+      return await request('/settings')
     } catch {
       return {}
     }
@@ -167,13 +151,10 @@ export const api = {
 
   async updateSettings(data) {
     try {
-      const response = await fetch(`${BASE_URL}/settings`, {
+      return await request('/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
-      if (!response.ok) return { ok: false }
-      return response.json()
     } catch {
       return { ok: false }
     }
