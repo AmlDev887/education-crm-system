@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 # Переходим на абсолютные импорты, чтобы PyCharm перестал "гореть"
@@ -20,7 +19,7 @@ def register_user(user_in: schemas.User, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Такой пользователь уже зарегистрирован,получите токен!"
         )
-
+    token = security.create_access_token(user_in.username)
 
     # Хешируем пароль перед сохранением
     hashed_pwd = security.hash_password(user_in.password)
@@ -34,7 +33,11 @@ def register_user(user_in: schemas.User, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"message": "Success", "id": new_user.id}
+    return {"message": "Success",
+            "id": new_user.id,
+            "access_token":token,
+            "token_type":"bearer"
+            }
 
 
 @router.post("/login")
@@ -48,9 +51,28 @@ def login(user_in: schemas.User, db: Session = Depends(get_db)):
             detail="Неправильный логин или пароль",
             headers={"WWW-Authenticate": "Bearer"}
         )
+    token = security.create_access_token(user_in.username)
 
     return {
         "message": "Успешный вход",
         "username": user.username,
-        "role": user.role
+        "role": user.role,
+        "access_token": token,
+        "token_type":"bearer"
+    }
+
+@router.get("/profile")
+def get_profile(current_user: str = Depends(security.get_current_user),db: Session = Depends(get_db)):
+    user = db.query(models.UserBase).filter(models.UserBase.username == current_user).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пользователь не найден"
+        )
+
+
+    return {
+    "id": user.id,
+    "username": user.username,
+    "role": user.role
     }

@@ -1,14 +1,19 @@
+from jose.constants import ALGORITHMS
 from passlib.context import CryptContext
 import jwt
 from datetime import timedelta,datetime,timezone
 from fastapi import Depends,HTTPException,status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, oauth2
 from passlib.context  import CryptContext
-import secrets
 from datetime import datetime, timedelta, timezone
 import jwt
+import os
+from dotenv import load_dotenv
 
-SECRET_KEY=secrets.token_urlsafe(32)
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = "HS256"
 
 def create_access_token(username: str):
     now = datetime.now(timezone.utc)
@@ -22,10 +27,32 @@ def create_access_token(username: str):
     token = jwt.encode(
         payload,
         SECRET_KEY,
-        algorithm="HS256"
+        algorithm=ALGORITHM
     )
-
     return token
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+        username = payload.get("sub")
+
+        if username is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Некорректный токен"
+            )
+        return username
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Недействительный токен"
+        )
 
 # Настройка алгоритма хеширования
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
