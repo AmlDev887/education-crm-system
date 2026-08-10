@@ -10,10 +10,17 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="EduCRM Backend")
 
+origins = [
+    "http://localhost:3000",      # Create React App / Next.js
+    "http://localhost:5173",      # Vite (стандартный порт)
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=origins,        # Точный список вместо ["*"]
+    allow_credentials=True,       # Обязательно для кук
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,7 +1,3 @@
-from jose.constants import ALGORITHMS
-from passlib.context import CryptContext
-import jwt
-from datetime import timedelta,datetime,timezone
 from fastapi import Depends,HTTPException,status
 from fastapi.security import OAuth2PasswordBearer, oauth2
 from passlib.context  import CryptContext
@@ -14,6 +10,8 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
+
+print("SECRET KEY LENGTH:", len(SECRET_KEY))
 
 def create_access_token(username: str):
     now = datetime.now(timezone.utc)
@@ -31,9 +29,18 @@ def create_access_token(username: str):
     )
     return token
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login",auto_error=False)
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
+    token = request.cookies.get("access_token")
+    if not token:
+         token = token_from_header
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Необходима авторизация",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         payload = jwt.decode(
             token,
@@ -62,3 +69,4 @@ def hash_password(password: str):
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
+

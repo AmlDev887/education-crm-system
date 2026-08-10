@@ -174,37 +174,44 @@ export default function Login({ onLogin }) {
   const [focused, setFocused] = useState(null)
   const [successMsg, setSuccessMsg] = useState(false)
 
-  const handleSubmit = async () => {
-    setError('')
-    if (login.length < 2 || password.length < 2) {
-      setError('Логин и пароль должны быть не менее 2 символов')
-      triggerShake(); return
-    }
-    setLoading(true)
-    try {
-      const response = await fetch('http://127.0.0.1:8000/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: login, password: password }),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.detail || 'Ошибка входа')
-      localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }))
-      if (data.username.toLowerCase() === 'amalbek') {
-        setSuccessMsg(true)
-        await new Promise(r => setTimeout(r, 1000))
-        setGreeting(true)
-      } else {
-        setSuccessMsg(true)
-        await new Promise(r => setTimeout(r, 1500))
-        onLogin(true)
-      }
-    } catch (err) {
-      setError(err.message); triggerShake()
-    } finally {
-      setLoading(false)
-    }
+ const handleSubmit = async (e) => {
+  if (e) e.preventDefault() // Останавливаем перезагрузку страницы
+
+  setError('')
+  if (login.length < 2 || password.length < 2) {
+    setError('Логин и пароль должны быть не менее 2 символов')
+    triggerShake(); return
   }
+  setLoading(true)
+  try {
+    const response = await fetch('http://127.0.0.1:8000/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // <--- КРИТИЧЕСКИ ВАЖНО: позволяет браузеру принять Cookie от FastAPI
+      body: JSON.stringify({ username: login, password: password }),
+    })
+
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.detail || 'Ошибка входа')
+
+    // Данные пользователя для интерфейса (имя, роль) сохранять в localStorage можно
+    localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }))
+
+    if (data.username.toLowerCase() === 'amalbek') {
+      setSuccessMsg(true)
+      await new Promise(r => setTimeout(r, 1000))
+      setGreeting(true)
+    } else {
+      setSuccessMsg(true)
+      await new Promise(r => setTimeout(r, 1500))
+      onLogin(true)
+    }
+  } catch (err) {
+    setError(err.message); triggerShake()
+  } finally {
+    setLoading(false)
+  }
+}
 
   const triggerShake = () => { setShake(true); setTimeout(() => setShake(false), 500) }
   const handleKey = (e) => { if (e.key === 'Enter') handleSubmit() }
@@ -281,139 +288,141 @@ export default function Login({ onLogin }) {
               </div>
             </div>
 
-            {/* Fields */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-mono tracking-[0.15em] uppercase mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Логин</label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: focused === 'login' ? '#a78bfa' : 'rgba(255,255,255,0.25)', transition: 'color 0.2s' }}>
-                    <User size={14} />
-                  </div>
-                  <input
-                    value={login}
-                    onChange={e => { setLogin(e.target.value); setError('') }}
-                    onFocus={() => setFocused('login')}
-                    onBlur={() => setFocused(null)}
-                    onKeyDown={handleKey}
-                    placeholder="amalbek"
-                    autoComplete="username"
-                    style={{
-                      width: '100%',
-                      background: focused === 'login' ? 'rgba(124,58,237,0.07)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${focused === 'login' ? 'rgba(124,58,237,0.55)' : 'rgba(255,255,255,0.09)'}`,
-                      borderRadius: 10, padding: '11px 12px 11px 38px',
-                      color: '#eae8e3', fontSize: 13, outline: 'none',
-                      transition: 'all 0.2s ease',
-                      boxShadow: focused === 'login' ? '0 0 0 3px rgba(124,58,237,0.1)' : 'none',
-                      fontFamily: 'Syne, sans-serif',
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono tracking-[0.15em] uppercase mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Пароль</label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: focused === 'pass' ? '#a78bfa' : 'rgba(255,255,255,0.25)', transition: 'color 0.2s' }}>
-                    <Lock size={14} />
-                  </div>
-                  <input
-                    value={password}
-                    onChange={e => { setPassword(e.target.value); setError('') }}
-                    onFocus={() => setFocused('pass')}
-                    onBlur={() => setFocused(null)}
-                    onKeyDown={handleKey}
-                    type={showPass ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    style={{
-                      width: '100%',
-                      background: focused === 'pass' ? 'rgba(124,58,237,0.07)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${focused === 'pass' ? 'rgba(124,58,237,0.55)' : 'rgba(255,255,255,0.09)'}`,
-                      borderRadius: 10, padding: '11px 38px 11px 38px',
-                      color: '#eae8e3', fontSize: 13, outline: 'none',
-                      transition: 'all 0.2s ease',
-                      boxShadow: focused === 'pass' ? '0 0 0 3px rgba(124,58,237,0.1)' : 'none',
-                      fontFamily: 'Syne, sans-serif',
-                    }}
-                  />
-                  <button type="button" onClick={() => setShowPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors" style={{ color: 'rgba(255,255,255,0.3)', cursor: 'pointer' }}>
-                    {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
-                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', animation: 'fade-in 0.2s ease' }}>
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#ef4444' }} />
-                  {error}
-                </div>
-              )}
-
-              {successMsg && (
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
-                  style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399', animation: 'fade-in 0.2s ease' }}>
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
-                  Успешный вход! Добро пожаловать...
-                </div>
-              )}
-
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 font-semibold text-sm py-3 rounded-xl transition-all duration-200 mt-2"
-                style={{
-                  background: loading ? 'rgba(124,58,237,0.3)' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-                  border: '1px solid rgba(167,139,250,0.35)',
-                  color: loading ? 'rgba(255,255,255,0.5)' : 'white',
-                  boxShadow: loading ? 'none' : '0 4px 24px rgba(124,58,237,0.45)',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {loading ? (
-                  <><div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white/70 animate-spin" />Проверяем...</>
-                ) : (
-                  <><LogIn size={15} />Войти в систему<ChevronRight size={15} /></>
-                )}
-              </button>
+  {/* Fields */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-[10px] font-mono tracking-[0.15em] uppercase mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Логин</label>
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: focused === 'login' ? '#a78bfa' : 'rgba(255,255,255,0.25)', transition: 'color 0.2s' }}>
+              <User size={14} />
             </div>
-
-            {/* Footer */}
-            <div className="mt-6 pt-5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#ef4444', boxShadow: '0 0 4px #ef4444' }} />
-                <span className="text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.2)' }}>localhost · dev</span>
-              </div>
-
-              {/* Dev button — prominent */}
-              <button
-                onClick={() => setDevOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 group"
-                style={{
-                  background: 'rgba(124,58,237,0.1)',
-                  border: '1px solid rgba(124,58,237,0.3)',
-                  color: '#a78bfa',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(124,58,237,0.2)'
-                  e.currentTarget.style.borderColor = 'rgba(124,58,237,0.55)'
-                  e.currentTarget.style.boxShadow = '0 0 16px rgba(124,58,237,0.2)'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'rgba(124,58,237,0.1)'
-                  e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
-              >
-                <Code2 size={12} />
-                <span className="text-[11px] font-mono font-medium">О разработчике</span>
-              </button>
-            </div>
+            <input
+              name="username"
+              value={login}
+              onChange={e => { setLogin(e.target.value); setError('') }}
+              onFocus={() => setFocused('login')}
+              onBlur={() => setFocused(null)}
+              onKeyDown={handleKey}
+              placeholder="amalbek"
+              autoComplete="username"
+              style={{
+                width: '100%',
+                background: focused === 'login' ? 'rgba(124,58,237,0.07)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${focused === 'login' ? 'rgba(124,58,237,0.55)' : 'rgba(255,255,255,0.09)'}`,
+                borderRadius: 10, padding: '11px 12px 11px 38px',
+                color: '#eae8e3', fontSize: 13, outline: 'none',
+                transition: 'all 0.2s ease',
+                boxShadow: focused === 'login' ? '0 0 0 3px rgba(124,58,237,0.1)' : 'none',
+                fontFamily: 'Syne, sans-serif',
+              }}
+            />
           </div>
         </div>
-      </div>
 
+        <div>
+          <label className="block text-[10px] font-mono tracking-[0.15em] uppercase mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Пароль</label>
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: focused === 'pass' ? '#a78bfa' : 'rgba(255,255,255,0.25)', transition: 'color 0.2s' }}>
+              <Lock size={14} />
+            </div>
+            <input
+              name="password"
+              value={password}
+              onChange={e => { setPassword(e.target.value); setError('') }}
+              onFocus={() => setFocused('pass')}
+              onBlur={() => setFocused(null)}
+              onKeyDown={handleKey}
+              type={showPass ? 'text' : 'password'}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              style={{
+                width: '100%',
+                background: focused === 'pass' ? 'rgba(124,58,237,0.07)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${focused === 'pass' ? 'rgba(124,58,237,0.55)' : 'rgba(255,255,255,0.09)'}`,
+                borderRadius: 10, padding: '11px 38px 11px 38px',
+                color: '#eae8e3', fontSize: 13, outline: 'none',
+                transition: 'all 0.2s ease',
+                boxShadow: focused === 'pass' ? '0 0 0 3px rgba(124,58,237,0.1)' : 'none',
+                fontFamily: 'Syne, sans-serif',
+              }}
+            />
+            <button type="button" onClick={() => setShowPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors" style={{ color: 'rgba(255,255,255,0.3)', cursor: 'pointer' }}>
+              {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', animation: 'fade-in 0.2s ease' }}>
+            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#ef4444' }} />
+            {error}
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
+            style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399', animation: 'fade-in 0.2s ease' }}>
+            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+            Успешный вход! Добро пожаловать...
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 font-semibold text-sm py-3 rounded-xl transition-all duration-200 mt-2"
+          style={{
+            background: loading ? 'rgba(124,58,237,0.3)' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+            border: '1px solid rgba(167,139,250,0.35)',
+            color: loading ? 'rgba(255,255,255,0.5)' : 'white',
+            boxShadow: loading ? 'none' : '0 4px 24px rgba(124,58,237,0.45)',
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {loading ? (
+            <><div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white/70 animate-spin" />Проверяем...</>
+          ) : (
+            <><LogIn size={15} />Войти в систему<ChevronRight size={15} /></>
+          )}
+        </button>
+      </form>
+
+      {/* Footer */}
+      <div className="mt-6 pt-5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#ef4444', boxShadow: '0 0 4px #ef4444' }} />
+          <span className="text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.2)' }}>localhost · dev</span>
+        </div>
+
+        {/* Dev button — prominent */}
+        <button
+          type="button"
+          onClick={() => setDevOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 group"
+          style={{
+            background: 'rgba(124,58,237,0.1)',
+            border: '1px solid rgba(124,58,237,0.3)',
+            color: '#a78bfa',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(124,58,237,0.2)'
+            e.currentTarget.style.borderColor = 'rgba(124,58,237,0.55)'
+            e.currentTarget.style.boxShadow = '0 0 16px rgba(124,58,237,0.2)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(124,58,237,0.1)'
+            e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)'
+            e.currentTarget.style.boxShadow = 'none'
+          }}
+        >
+          <Code2 size={12} />
+          <span className="text-[11px] font-mono font-medium">О разработчике</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
       {devOpen && <DevModal onClose={() => setDevOpen(false)} />}
 
       <style>{`
