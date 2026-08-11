@@ -1,5 +1,13 @@
-# Игнорируем папку фронтенда для статистики
-EduCRM/** linguist-documentation
+# === Статистика языков GitHub (Linguist) ===
+frontend_crm/* linguist-vendored=true
+frontend_crm/package-lock.json linguist-generated=true
 
-# Принудительно считаем Python главным
-*.py linguist-detectable
+# === Нормализация строк ===
+* text=auto eol=lf
+
+# === Бинарные файлы ===
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.svg binary
+*.ico binary
