@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-key-for-development")
 ALGORITHM = "HS256"
 
-print("SECRET KEY LENGTH:", len(SECRET_KEY))
+print("SECRET KEY LENGTH:", len(SECRET_KEY) if SECRET_KEY else 0)
 
 def create_access_token(username: str):
     now = datetime.now(timezone.utc)
