@@ -1,22 +1,21 @@
-# Секреты и окружение
-.env
-.env.*
+# === Статистика языков GitHub (Linguist) ===
+# Прячем фронтенд из подсчёта языков — акцент на backend (Python/FastAPI)
+frontend_crm/* linguist-vendored=true
 
-# Python / FastAPI
-__pycache__/
-*.py[cod]
-.pytest_cache/
-venv/
-.venv/
+# Автогенерируемые файлы — не считать как "написанный" код
+frontend_crm/package-lock.json linguist-generated=true
+frontend_crm/package.json linguist-generated=false
 
-# Node.js / React / Vite
-frontend_crm/node_modules/
-frontend_crm/dist/
-frontend_crm/build/
-.DS_Store
+# Миграции Alembic — тоже генерируются автоматически, но это Python,
+# можно оставить как есть (они честно показывают твою работу с БД)
+# beckend_crm/alembic/versions/* linguist-generated=true
 
-# База данных и системные файлы
-*.db
-*.sqlite3
-.vscode/
-.idea/
+# === Нормализация строк (стандартная практика) ===
+* text=auto eol=lf
+
+# Бинарные файлы — не трогать построчно
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.svg binary
+*.ico binary
