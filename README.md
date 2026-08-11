@@ -45,6 +45,48 @@ EduCRM — система управления образовательным ц
 * 🔐 Авторизация через JWT с ролевой моделью
 
 ---
+---
+
+## 📸 Демонстрация интерфейса
+
+> *Обзор ключевых разделов системы управления:*
+
+### 1. Dashboard (Главная панель)
+| Основной вид | Дополнительный вид |
+| :---: | :---: |
+| ![Dashboard 1](assets/Screenshot_Dashbord.png) | ![Dashboard 2](assets/Screenshot_Dashbord2.png) |
+
+### 2. Студенты
+| Список студентов |
+| :---: |
+| ![Students](assets/Screenshot_Students.png) |
+
+### 3. Курсы
+| Управление курсами |
+| :---: |
+| ![Courses](assets/Screenshot_Courses.png) |
+
+### 4. Платежи
+| Финансовый учет |
+| :---: |
+| ![Payments](assets/Screenshot_Payments.png) |
+
+### 5. Посещаемость
+| Учет посещений |
+| :---: |
+| ![Attendance](assets/Screenshot_attendance.png) |
+
+### 6. Отчёты
+| Аналитика 1 | Аналитика 2 |
+| :---: | :---: |
+| ![Stats 1](assets/Screenshot_stats.png) | ![Stats 2](assets/Screenshot_stats2.png) |
+
+### 7. Настройки
+| Системные настройки |
+| :---: |
+| ![Settings](assets/Screenshot_settings.png) |
+
+---
 
 ## ⚙️ Быстрый запуск
 
